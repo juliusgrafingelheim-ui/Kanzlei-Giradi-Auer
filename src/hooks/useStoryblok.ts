@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
-import { getStory, StoryblokStory } from "../lib/storyblok";
+import { useEffect, useState, useCallback } from "react";
+import { getStory, onStoryblokInput, isStoryblokEditor, StoryblokStory } from "../lib/storyblok";
 
 /**
  * Hook to fetch and use Storyblok content.
- * Falls back to null if Storyblok is not configured or the story doesn't exist,
- * so pages can use their own fallback data.
+ * - Fetches content from the Storyblok CDN API on mount.
+ * - Falls back to null if Storyblok is not configured or the story doesn't exist.
+ * - When inside the Storyblok Visual Editor, subscribes to real-time "input"
+ *   events via the Bridge so content updates appear instantly (no page reload).
  */
 export function useStoryblok<T = any>(
   slug: string
@@ -13,6 +15,7 @@ export function useStoryblok<T = any>(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
+  // Initial fetch from CDN API
   useEffect(() => {
     const hasToken = import.meta.env.VITE_STORYBLOK_TOKEN;
 
@@ -52,6 +55,19 @@ export function useStoryblok<T = any>(
     return () => {
       cancelled = true;
     };
+  }, [slug]);
+
+  // Subscribe to real-time Bridge events when inside the Visual Editor
+  useEffect(() => {
+    if (!isStoryblokEditor) return;
+
+    const unsubscribe = onStoryblokInput(slug, (updatedContent: T) => {
+      console.info(`[useStoryblok] Live update received for "${slug}"`);
+      setContent(updatedContent);
+      setLoading(false);
+    });
+
+    return unsubscribe;
   }, [slug]);
 
   return { content, loading, error };
