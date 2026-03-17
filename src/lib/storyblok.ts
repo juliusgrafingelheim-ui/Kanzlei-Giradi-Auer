@@ -3,16 +3,30 @@ import { storyblokInit, apiPlugin, StoryblokClient } from "@storyblok/react";
 // Debug: Log the token (first 10 chars only for security)
 const token = import.meta.env.VITE_STORYBLOK_TOKEN || "";
 console.log('[Storyblok Init] Token available:', token ? `${token.substring(0, 10)}...` : 'NO TOKEN FOUND');
-console.log('[Storyblok Init] All env vars:', import.meta.env);
 
 // Initialize Storyblok
-const { storyblokApi } = storyblokInit({
+const initResult = storyblokInit({
   accessToken: token,
   use: [apiPlugin],
   apiOptions: {
-    region: "eu", // or 'us' depending on your region
+    region: "eu",
   },
 });
+
+console.log('[Storyblok Init] Init result:', initResult);
+
+// Create API client directly as fallback
+let storyblokApi = initResult?.storyblokApi;
+
+// If storyblokApi is not available from init, create it directly
+if (!storyblokApi && token) {
+  console.log('[Storyblok Init] Creating API client directly...');
+  storyblokApi = new StoryblokClient({
+    accessToken: token,
+    region: "eu",
+  });
+  console.log('[Storyblok Init] Direct API client created:', !!storyblokApi);
+}
 
 export { storyblokApi };
 
