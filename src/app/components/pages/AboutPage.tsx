@@ -120,13 +120,37 @@ export function AboutPage() {
   const c = content as any;
 
   // Helper to extract image URL from Storyblok asset field
-  // Storyblok can return: { filename: "url" }, "url", "", null, or undefined
+  // Storyblok can return: { filename: "url" }, "url", "", null, undefined,
+  // or even { id: 123, filename: "url", alt: "", fieldtype: "asset" }
   const getAssetUrl = (field: any): string => {
     if (!field) return "";
     if (typeof field === "string") return field;
-    if (typeof field === "object" && field.filename) return field.filename;
+    if (typeof field === "object") {
+      // Standard Storyblok asset object
+      if (field.filename) return field.filename;
+      // Some Storyblok versions use 'url' or 'src'
+      if (field.url) return field.url;
+      if (field.src) return field.src;
+      // Could be nested in a 'file' property
+      if (field.file?.filename) return field.file.filename;
+    }
     return "";
   };
+
+  // PRODUCTION DEBUG: Log all image-related content keys from Storyblok
+  if (c) {
+    const imageKeys = Object.keys(c).filter(k => k.includes('image') || k.includes('foto') || k.includes('photo') || k.includes('img'));
+    console.info('[About] Storyblok image fields:', imageKeys);
+    imageKeys.forEach(k => {
+      console.info(`[About] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 200));
+    });
+    // Also log all member fields for member 1
+    const member1Keys = Object.keys(c).filter(k => k.startsWith('member_1'));
+    console.info('[About] member_1 fields:', member1Keys);
+    member1Keys.forEach(k => {
+      console.info(`[About] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 300));
+    });
+  }
 
   // Build team: start with hardcoded fallback, then overlay ANY Storyblok fields
   // This ensures images from Storyblok are used even if not all text fields are populated
