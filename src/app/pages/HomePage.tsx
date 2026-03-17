@@ -439,7 +439,7 @@ export function HomePage() {
                 </div>
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
-                    src=""
+                    src={pageContent.team_image_3?.filename || ""}
                     alt="Mag. Anna Girardi"
                     className="w-full h-full object-cover"
                   />
@@ -455,8 +455,8 @@ export function HomePage() {
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden shadow-xl">
                   <ImageWithFallback
-                    src={pageContent.hero_image?.filename || "https://images.unsplash.com/photo-1571055931484-22dce9d6c510?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYXclMjBvZmZpY2UlMjBpbnRlcmlvciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM3NTc5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"}
-                    alt="Kanzlei Büro"
+                    src={pageContent.team_image_4?.filename || ""}
+                    alt="Mag. B.A. Constanze Girardi"
                     className="w-full h-full object-cover"
                   />
                 </div>

@@ -20,10 +20,6 @@ export function Footer() {
               Professionelle Rechtsberatung mit persönlicher Note seit 1989. 
               Wir betreuen Privatpersonen und Unternehmen in allen rechtlichen Belangen.
             </p>
-            <div className="flex items-center gap-2 text-sm text-slate-500">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-              Derzeit erreichbar
-            </div>
           </div>
 
           {/* Quick Links */}
