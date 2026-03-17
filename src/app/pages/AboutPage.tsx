@@ -11,6 +11,15 @@ const getIconComponent = (iconName: string) => {
   return Icon || Award;
 };
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+};
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
 const imgOffice1 = "https://images.unsplash.com/photo-1571055931484-22dce9d6c510?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYXclMjBvZmZpY2UlMjBpbnRlcmlvciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM3NTc5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
 
 const teamMembers = [
