@@ -120,36 +120,49 @@ export function AboutPage() {
   const c = content as any;
 
   // Helper to extract image URL from Storyblok asset field
-  // Storyblok can return: { filename: "url" }, "url", "", null, or undefined
+  // Storyblok can return: { filename: "url" }, "url", "", null, undefined,
+  // or even { id: 123, filename: "url", alt: "", fieldtype: "asset" }
   const getAssetUrl = (field: any): string => {
     if (!field) return "";
     if (typeof field === "string") return field;
-    if (typeof field === "object" && field.filename) return field.filename;
+    if (typeof field === "object") {
+      // Standard Storyblok asset object
+      if (field.filename) return field.filename;
+      // Some Storyblok versions use 'url' or 'src'
+      if (field.url) return field.url;
+      if (field.src) return field.src;
+      // Could be nested in a 'file' property
+      if (field.file?.filename) return field.file.filename;
+    }
     return "";
   };
 
-  // Build team from Storyblok or fallback
-  const teamData = [];
-  for (let i = 1; i <= 5; i++) {
-    const name = c?.[`member_${i}_name`];
-    if (name) {
-      const specs = [];
-      for (let s = 1; s <= 6; s++) {
-        const sp = c[`member_${i}_spec_${s}`];
-        if (sp) specs.push(sp);
-      }
-      teamData.push({
-        name,
-        title: c[`member_${i}_title`] || "",
-        role: c[`member_${i}_role`] || "",
-        image: getAssetUrl(c[`member_${i}_image`]),
-        description: c[`member_${i}_description`] || "",
-        since: c[`member_${i}_since`] || "",
-        specializations: specs,
-      });
+  // Build team
+  const team = teamMembers.map((fallback, idx) => {
+    const i = idx + 1;
+    if (!c) return fallback;
+
+    // Collect specializations from Storyblok (if any)
+    const specs: string[] = [];
+    for (let s = 1; s <= 6; s++) {
+      const sp = c[`member_${i}_spec_${s}`];
+      if (sp) specs.push(sp);
     }
-  }
-  const team = teamData.length > 0 ? teamData : teamMembers;
+
+    // Get Storyblok image for this member
+    const sbImage = getAssetUrl(c[`member_${i}_image`]);
+
+    return {
+      ...fallback,
+      name: c[`member_${i}_name`] || fallback.name,
+      title: c[`member_${i}_title`] || fallback.title,
+      role: c[`member_${i}_role`] || fallback.role,
+      image: sbImage || fallback.image,
+      description: c[`member_${i}_description`] || fallback.description,
+      since: c[`member_${i}_since`] || fallback.since,
+      specializations: specs.length > 0 ? specs : fallback.specializations,
+    };
+  });
 
   // Build timeline from Storyblok or fallback
   const timelineData = [];
@@ -174,6 +187,13 @@ export function AboutPage() {
       });
     }
   }
+  const defaultValues = [
+    { icon: Shield, title: "Vertrauen & Integrität", desc: "Ehrliche und transparente Beratung bildet das Fundament unserer Arbeit.", accent: "from-[#1a365d] to-[#0f2744]" },
+    { icon: Users, title: "Persönliche Betreuung", desc: "Jeder Klient erhält individuelle Aufmerksamkeit und maßgeschneiderte Lösungen.", accent: "from-slate-700 to-slate-800" },
+    { icon: Target, title: "Zielorientierung", desc: "Wir arbeiten konsequent auf das bestmögliche Ergebnis für Sie hin.", accent: "from-slate-600 to-slate-700" },
+    { icon: TrendingUp, title: "Kontinuierliche Weiterentwicklung", desc: "Wir bilden uns stetig fort, um Ihnen aktuelle rechtliche Expertise zu bieten.", accent: "from-slate-500 to-slate-600" },
+  ];
+  const valuesList = valuesData.length > 0 ? valuesData : defaultValues;
 
   // Build sekretariat from Storyblok or fallback
   const sekretariatData = [];
@@ -372,7 +392,7 @@ export function AboutPage() {
             variants={stagger}
             className="grid md:grid-cols-2 gap-6"
           >
-            {valuesData.map((value) => (
+            {valuesList.map((value) => (
               <motion.div
                 key={value.title}
                 variants={fadeInUp}
@@ -433,11 +453,21 @@ export function AboutPage() {
                 >
                   <div className="relative group">
                     <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl ring-1 ring-slate-200">
-                      <ImageWithFallback
-                        src={member.image}
-                        alt={member.name}
-                        className="w-full h-full object-cover"
-                      />
+                      {member.image ? (
+                        <img
+                          src={member.image}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.warn(`[About] Image failed to load for ${member.name}:`, member.image);
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Users className="w-16 h-16 text-slate-300" />
+                        </div>
+                      )}
                     </div>
                     {/* Year badge */}
                     <div className="absolute -bottom-4 right-6 bg-[#1a365d] text-white px-5 py-2.5 rounded-xl shadow-lg">
