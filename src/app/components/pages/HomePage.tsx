@@ -441,6 +441,7 @@ export function HomePage() {
               <div className="space-y-4">
                 <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_1) || "t1"}
                     src={getAssetUrl(pageContent.team_image_1) || ""}
                     alt="Dr. Thomas Girardi"
                     className="w-full h-full object-cover"
@@ -448,6 +449,7 @@ export function HomePage() {
                 </div>
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_3) || "t3"}
                     src={getAssetUrl(pageContent.team_image_3) || ""}
                     alt="Mag. Anna Girardi"
                     className="w-full h-full object-cover"
@@ -457,6 +459,7 @@ export function HomePage() {
               <div className="space-y-4 pt-8">
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_2) || "t2"}
                     src={getAssetUrl(pageContent.team_image_2) || ""}
                     alt="DI (FH) Mag. Bernd Auer"
                     className="w-full h-full object-cover"
@@ -464,6 +467,7 @@ export function HomePage() {
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_4) || "t4"}
                     src={getAssetUrl(pageContent.team_image_4) || ""}
                     alt="Mag. B.A. Constanze Girardi"
                     className="w-full h-full object-cover"
@@ -593,7 +597,7 @@ export function HomePage() {
               className="rounded-2xl overflow-hidden shadow-2xl h-[400px] ring-1 ring-white/10"
             >
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1753741204751-9c7ffdbd6619?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxJbm5zYnJ1Y2slMjBBdXN0cmlhJTIwY2l0eXNjYXBlJTIwbW91bnRhaW5zfGVufDF8fHx8MTc3Mzc1ODgxMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
+                src={getAssetUrl(pageContent.location_image) || "https://images.unsplash.com/photo-1753741204751-9c7ffdbd6619?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxJbm5zYnJ1Y2slMjBBdXN0cmlhJTIwY2l0eXNjYXBlJTIwbW91bnRhaW5zfGVufDF8fHx8MTc3Mzc1ODgxMXww&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"}
                 alt="Innsbruck Panorama"
                 className="w-full h-full object-cover"
               />

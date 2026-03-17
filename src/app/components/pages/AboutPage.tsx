@@ -137,23 +137,7 @@ export function AboutPage() {
     return "";
   };
 
-  // PRODUCTION DEBUG: Log all image-related content keys from Storyblok
-  if (c) {
-    const imageKeys = Object.keys(c).filter(k => k.includes('image') || k.includes('foto') || k.includes('photo') || k.includes('img'));
-    console.info('[About] Storyblok image fields:', imageKeys);
-    imageKeys.forEach(k => {
-      console.info(`[About] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 200));
-    });
-    // Also log all member fields for member 1
-    const member1Keys = Object.keys(c).filter(k => k.startsWith('member_1'));
-    console.info('[About] member_1 fields:', member1Keys);
-    member1Keys.forEach(k => {
-      console.info(`[About] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 300));
-    });
-  }
-
-  // Build team: start with hardcoded fallback, then overlay ANY Storyblok fields
-  // This ensures images from Storyblok are used even if not all text fields are populated
+  // Build team
   const team = teamMembers.map((fallback, idx) => {
     const i = idx + 1;
     if (!c) return fallback;
@@ -167,12 +151,6 @@ export function AboutPage() {
 
     // Get Storyblok image for this member
     const sbImage = getAssetUrl(c[`member_${i}_image`]);
-
-    // Debug: log what Storyblok returns for this member's image field
-    if (import.meta.env.DEV) {
-      const raw = c[`member_${i}_image`];
-      if (raw) console.info(`[About] member_${i}_image raw:`, raw, '→ resolved:', sbImage);
-    }
 
     return {
       ...fallback,
@@ -476,6 +454,7 @@ export function AboutPage() {
                   <div className="relative group">
                     <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl ring-1 ring-slate-200">
                       <ImageWithFallback
+                        key={member.image || `member-${index}`}
                         src={member.image}
                         alt={member.name}
                         className="w-full h-full object-cover"
