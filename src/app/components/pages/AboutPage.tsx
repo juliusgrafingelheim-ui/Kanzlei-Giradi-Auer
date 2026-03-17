@@ -1,550 +1,580 @@
-import { usePageContent } from "../storyblok";
-import { getFAQsByCategories, PAGE_FAQ_CATEGORIES } from "../faqData";
-import { GoogleReviewsGrid } from "../GoogleReviews";
-import { useLanguage } from "../LanguageContext";
-import { Camera, Film, Heart, Mail, Phone, MapPin, Clock, Users, Award, Video } from "lucide-react";
-import { SectionReveal } from "../SectionReveal";
-import { SEO } from "../SEO";
-import { ImageWithFallback } from "../figma/ImageWithFallback";
-import { useContactModal } from "../ContactModal";
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "motion/react";
-import { FAQSection } from "../FAQSection";
+import { Helmet } from "react-helmet-async";
+import { Award, Users, Target, TrendingUp, Mail, ArrowRight, Scale, Shield, Briefcase, GraduationCap } from "lucide-react";
+import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { motion } from "motion/react";
+import { Link } from "react-router";
+import { useStoryblok } from "../../hooks/useStoryblok";
+import * as LucideIcons from "lucide-react";
 
-const HERO_VIDEO = "https://ik.imagekit.io/r2yqrg6np/Madeira%20Clip%20fu%CC%88r%20Webseite.mp4?updatedAt=1773024774420";
-
-const IMAGES = {
-  portrait: "https://ik.imagekit.io/r2yqrg6np/68e54c497a9dde9d00252dcb_WhatsApp%20Image%202025-09-16%20at%2022.32.17.avif",
-  landscape: "https://images.unsplash.com/photo-1598108717314-363db712d358?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMGxhbmRzY2FwZSUyMGF1c3RyaWElMjBhbHBzfGVufDF8fHx8MTc3Mjk5NTc5NXww&ixlib=rb-4.1.0&q=80&w=1080",
-  marioAction: "https://ik.imagekit.io/r2yqrg6np/6966a461e78df6320fd2fd1e_20251019_Hundeshooting-3528_(WebRes).jpg",
+const getIconComponent = (iconName: string) => {
+  const Icon = (LucideIcons as any)[iconName];
+  return Icon || Award;
 };
 
+const fadeInUp = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } },
+};
+
+const stagger = {
+  visible: { transition: { staggerChildren: 0.12 } },
+};
+
+const imgOffice1 = "https://images.unsplash.com/photo-1571055931484-22dce9d6c510?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYXclMjBvZmZpY2UlMjBpbnRlcmlvciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM3NTc5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
+const teamMembers = [
+  {
+    name: "Dr. Thomas Girardi",
+    title: "Rechtsanwalt",
+    role: "Kanzleigründer",
+    image: "",
+    description:
+      "Dr. Thomas Girardi ist seit 1988 als Rechtsanwalt eingetragen und auf Wirtschaftsrecht mit Schwerpunkt Immobilien-, Vertrags-, Bau-, Miet- und Erbrecht spezialisiert.",
+    since: "Seit 1989",
+    specializations: [
+      "Wirtschaftsrecht",
+      "Immobilienrecht",
+      "Vertragsrecht",
+      "Baurecht",
+      "Miet- und Erbrecht",
+    ],
+    isLawyer: true,
+  },
+  {
+    name: "DI (FH) Mag. Bernd Auer",
+    title: "Rechtsanwalt",
+    role: "Regiepartner",
+    image: "",
+    description:
+      "Mag. Bernd Auer ist seit 2010 selbständiger Rechtsanwalt und Regiepartner der Kanzleigemeinschaft. Seine Fachgebiete umfassen insbesondere Familien-, Schadenersatz-, Versicherungs-, Erb- und Vertragsrecht.",
+    since: "Seit 2010",
+    specializations: [
+      "Familienrecht",
+      "Schadenersatzrecht",
+      "Versicherungsrecht",
+      "Erbrecht",
+      "Vertragsrecht",
+    ],
+    isLawyer: true,
+  },
+  {
+    name: "Mag. Anna Girardi",
+    title: "Rechtsanwältin",
+    role: "Regiepartnerin",
+    image: "",
+    description:
+      "Mag. Anna Girardi ist seit April 2025 als selbstständige Rechtsanwältin eingetragen und Regiepartnerin der Kanzleigemeinschaft. Zudem ist sie ausgebildete Mediatorin, Konflikt-Coach und systemischer Coach.",
+    since: "Seit 2025",
+    specializations: [
+      "Familienrecht",
+      "Mietrecht",
+      "Mediation",
+      "Konflikt-Coaching",
+    ],
+    isLawyer: true,
+  },
+  {
+    name: "Mag. B.A. Constanze Girardi",
+    title: "Rechtsanwaltsanwärterin",
+    role: "Team",
+    image: "",
+    description:
+      "Constanze Girardi ist als Rechtsanwaltsanwärterin Teil unseres Teams und unterstützt die Kanzlei in allen rechtlichen Belangen.",
+    since: "Team",
+    specializations: [],
+    isLawyer: false,
+  },
+  {
+    name: "Monika Girardi",
+    title: "Kanzleiassistenz",
+    role: "Team",
+    image: "",
+    description:
+      "Monika Girardi ist seit 1989 als Kanzleiassistenz tätig und die erste Ansprechpartnerin für unsere Klienten.",
+    since: "Seit 1989",
+    specializations: [],
+    isLawyer: false,
+  },
+];
+
+const timeline = [
+  {
+    year: "1989",
+    title: "Die Gründung",
+    description: "RA Dr. Thomas Girardi gründet nach seiner Ausbildung bei einem renommierten Wirtschaftsanwalt seine eigene Rechtsanwaltskanzlei in Innsbruck.",
+  },
+  {
+    year: "2010",
+    title: "Erster Regiepartner",
+    description: "RA DI (FH) Mag. Bernd Auer tritt nach seiner Ausbildung bei RA Dr. Thomas Girardi als Regiepartner in die Kanzlei ein.",
+  },
+  {
+    year: "2025",
+    title: "Die nächste Generation",
+    description: "RA Mag. Anna Girardi tritt nach ihrer Ausbildung in der Kanzlei Girardi & Auer ebenfalls als Regiepartnerin ein.",
+  },
+];
+
 export function AboutPage() {
-  const { t, lang } = useLanguage();
-  const { openContact } = useContactModal();
-  const { getText, getAsset, getIcon } = usePageContent("about", lang);
+  const { content } = useStoryblok('pages/about');
+  const c = content as any;
 
-  const seo = lang === "de"
-    ? {
-        title: "Ueber mich - Fotograf Mario Schubert | Innsbruck, Tirol & Bayern",
-        description: "Lernt Mario Schubert kennen - euren Hochzeitsfotografen und Tierfotografen aus Innsbruck. Authentische, zeitlose Fotografie in Tirol, Bayern und darueber hinaus.",
-        keywords: "Fotograf Innsbruck, Mario Schubert, Hochzeitsfotograf Tirol, Fotograf Bayern, Photographer Innsbruck, Tierfotograf Muenchen",
+  // Helper to extract image URL from Storyblok asset field
+  // Storyblok can return: { filename: "url" }, "url", "", null, or undefined
+  const getAssetUrl = (field: any): string => {
+    if (!field) return "";
+    if (typeof field === "string") return field;
+    if (typeof field === "object" && field.filename) return field.filename;
+    return "";
+  };
+
+  // Build team from Storyblok or fallback
+  const teamData = [];
+  for (let i = 1; i <= 5; i++) {
+    const name = c?.[`member_${i}_name`];
+    if (name) {
+      const specs = [];
+      for (let s = 1; s <= 6; s++) {
+        const sp = c[`member_${i}_spec_${s}`];
+        if (sp) specs.push(sp);
       }
-    : {
-        title: "About Me - Photographer Mario Schubert | Innsbruck, Tyrol & Bavaria",
-        description: "Meet Mario Schubert - your wedding and animal photographer from Innsbruck. Authentic, timeless photography in Tyrol, Bavaria and beyond.",
-        keywords: "photographer Innsbruck, Mario Schubert, wedding photographer Tyrol, photographer Bavaria, photographer Munich, animal photographer Alps",
-      };
+      teamData.push({
+        name,
+        title: c[`member_${i}_title`] || "",
+        role: c[`member_${i}_role`] || "",
+        image: getAssetUrl(c[`member_${i}_image`]),
+        description: c[`member_${i}_description`] || "",
+        since: c[`member_${i}_since`] || "",
+        specializations: specs,
+      });
+    }
+  }
+  const team = teamData.length > 0 ? teamData : teamMembers;
 
-  const philosophyItems = [
-    { icon: Camera, title: getText("philosophy1", t.about.philosophy1), text: getText("philosophy1_text", t.about.philosophy1Text) },
-    { icon: Film, title: getText("philosophy2", t.about.philosophy2), text: getText("philosophy2_text", t.about.philosophy2Text) },
-    { icon: Heart, title: getText("philosophy3", t.about.philosophy3), text: getText("philosophy3_text", t.about.philosophy3Text) },
+  // Build timeline from Storyblok or fallback
+  const timelineData = [];
+  for (let i = 1; i <= 3; i++) {
+    const year = c?.[`timeline_${i}_year`];
+    if (year) {
+      timelineData.push({ year, title: c[`timeline_${i}_title`] || "", description: c[`timeline_${i}_desc`] || "" });
+    }
+  }
+  const timelineList = timelineData.length > 0 ? timelineData : timeline;
+
+  // Build values from Storyblok or fallback
+  const valuesData = [];
+  for (let i = 1; i <= 4; i++) {
+    const title = c?.[`value_${i}_title`];
+    if (title) {
+      valuesData.push({
+        icon: getIconComponent(c[`value_${i}_icon`] || "Award"),
+        title,
+        desc: c[`value_${i}_desc`] || "",
+        accent: i === 1 ? "from-[#1a365d] to-[#0f2744]" : i === 2 ? "from-slate-700 to-slate-800" : i === 3 ? "from-slate-600 to-slate-700" : "from-slate-500 to-slate-600",
+      });
+    }
+  }
+
+  // Build sekretariat from Storyblok or fallback
+  const sekretariatData = [];
+  for (let i = 1; i <= 3; i++) {
+    const name = c?.[`sekretariat_${i}_name`];
+    if (name) sekretariatData.push({ name, title: c[`sekretariat_${i}_title`] || "Kanzleiassistenz" });
+  }
+  const sekretariat = sekretariatData.length > 0 ? sekretariatData : [
+    { name: "Doris Blahut", title: "Kanzleiassistenz" },
+    { name: "Iva Federfová", title: "Kanzleiassistenz" },
+    { name: "Carina Schuler", title: "Kanzleiassistenz" },
   ];
 
-  const content = lang === "de"
-    ? {
-        expectTitle: getText("expect_title", "Das erwartet Euch"),
-        expectText1: getText("text1", "Mein Ziel ist es, eure Geschichte so zu erzählen, wie sie wirklich ist: ehrlich, lebendig und voller Emotion. Kein steifes Posing, kein künstliches Lächeln – sondern echte Momente, die ihr so erlebt habt."),
-        expectText2: getText("text2", "Jede Hochzeit, jedes Shooting ist einzigartig – und genauso behandle ich es auch. Ich nehme mir Zeit, euch kennenzulernen, eure Wünsche zu verstehen und eine vertrauensvolle Atmosphäre zu schaffen."),
-        expectText3: getText("text3", "Mein Stil vereint natürliches Licht mit einem Hauch Editorial: ungezwungen, cineastisch und zeitlos. Eure Bilder sollen Erinnerungen sein, die euch auch in 20 Jahren noch genauso berühren wie am ersten Tag."),
-        tagline: getText("tagline", "natürlich. zeitlos. authentisch."),
-        taglineBold: getText("tagline_bold", "FOTOGRAFIE"),
-        taglineDesc: getText("tagline_desc", "Bei der dokumentarischen Begleitung sind Posen und gestellte Aufnahmen ein absolutes No-Go. Mein Fokus liegt darauf, die echten Emotionen und natürlichen Momente festzuhalten."),
-        // Stats
-        statsTitle: getText("stats_title", "In Zahlen"),
-        stat1Num: getText("stat1_num", "76+"),
-        stat1Label: getText("stat1_label", "Hochzeiten begleitet"),
-        stat2Num: getText("stat2_num", "420+"),
-        stat2Label: getText("stat2_label", "Zufriedene Kunden"),
-        stat3Num: getText("stat3_num", "11+"),
-        stat3Label: getText("stat3_label", "Jahre Erfahrung"),
-        stat4Num: getText("stat4_num", "140+"),
-        stat4Label: getText("stat4_label", "Videos produziert"),
-        // Mario in Action section
-        passionPretitle: getText("passion_pretitle", "LEIDENSCHAFT"),
-        passionTitle: getText("passion_title", "Mehr als nur Hochzeiten"),
-        passionText1: getText("passion_text1", "Neben Hochzeiten ist die Tierfotografie meine zweite große Leidenschaft. Ob im Studio oder in freier Natur – ich bringe die Persönlichkeit eures Vierbeiners in Bildern zum Ausdruck, die euch ein Leben lang begleiten."),
-        passionText2: getText("passion_text2", "Was mich antreibt? Die Freude in den Augen meiner Kunden, wenn sie ihre Bilder zum ersten Mal sehen. Jedes Shooting ist für mich eine neue Geschichte, die darauf wartet, erzählt zu werden."),
-        passionCta: getText("passion_cta", "Tierfotos entdecken"),
-        // Testimonials
-        testimonialsTitle: getText("testimonials_title", "Was meine Kunden sagen"),
-        // Contact
-        contactPre: getText("contact_pretitle", "KONTAKT"),
-        contactTitle: getText("contact_title", "Lass uns reden!"),
-        contactText: getText("contact_text", "Zusammen erstellen wir unvergessliche Erinnerungen für euch."),
-        contactCta: getText("contact_cta", "Unverbindlich anfragen"),
-        contactOrText: getText("contact_or", "Oder direkt erreichen:"),
-        // CTA Banner
-        ctaBannerPre: getText("cta_pretitle", "BEREIT?"),
-        ctaBannerTitle: getText("cta_title", "Eure Geschichte wartet darauf, erzählt zu werden."),
-        ctaBannerSub: getText("cta_text", "Schreibt mir – die Erstberatung ist kostenlos und unverbindlich."),
-        ctaBannerBtn: getText("cta_button", "Jetzt Kontakt aufnehmen"),
-      }
-    : {
-        expectTitle: getText("expect_title", "What to expect"),
-        expectText1: getText("text1", "My goal is to tell your story as it really is: honest, vibrant and full of emotion. No stiff posing, no artificial smiling – but real moments as you experienced them."),
-        expectText2: getText("text2", "Every wedding, every shoot is unique – and that's exactly how I treat it. I take time to get to know you, understand your wishes and create a trusting atmosphere."),
-        expectText3: getText("text3", "My style combines natural light with a touch of editorial: relaxed, cinematic and timeless. Your images should be memories that touch you just as much in 20 years as they do on day one."),
-        tagline: getText("tagline", "natural. timeless. authentic."),
-        taglineBold: getText("tagline_bold", "PHOTOGRAPHY"),
-        taglineDesc: getText("tagline_desc", "In documentary coverage, poses and staged shots are an absolute no-go. My focus is on capturing real emotions and natural moments."),
-        // Stats
-        statsTitle: getText("stats_title", "By the numbers"),
-        stat1Num: getText("stat1_num", "76+"),
-        stat1Label: getText("stat1_label", "Weddings captured"),
-        stat2Num: getText("stat2_num", "420+"),
-        stat2Label: getText("stat2_label", "Happy clients"),
-        stat3Num: getText("stat3_num", "11+"),
-        stat3Label: getText("stat3_label", "Years of experience"),
-        stat4Num: getText("stat4_num", "140+"),
-        stat4Label: getText("stat4_label", "Videos produced"),
-        // Mario in Action section
-        passionPretitle: getText("passion_pretitle", "PASSION"),
-        passionTitle: getText("passion_title", "More than just weddings"),
-        passionText1: getText("passion_text1", "Besides weddings, animal photography is my second great passion. Whether in the studio or in the wild – I bring out the personality of your four-legged friend in images that will accompany you for a lifetime."),
-        passionText2: getText("passion_text2", "What drives me? The joy in my clients' eyes when they see their photos for the first time. Every shoot is a new story waiting to be told."),
-        passionCta: getText("passion_cta", "Discover animal photos"),
-        // Testimonials
-        testimonialsTitle: getText("testimonials_title", "What my clients say"),
-        // Contact
-        contactPre: getText("contact_pretitle", "CONTACT"),
-        contactTitle: getText("contact_title", "Let's talk!"),
-        contactText: getText("contact_text", "Together we'll create unforgettable memories for you."),
-        contactCta: getText("contact_cta", "Get in touch – no strings attached"),
-        contactOrText: getText("contact_or", "Or reach me directly:"),
-        // CTA Banner
-        ctaBannerPre: getText("cta_pretitle", "READY?"),
-        ctaBannerTitle: getText("cta_title", "Your story is waiting to be told."),
-        ctaBannerSub: getText("cta_text", "Write to me – the initial consultation is free and non-binding."),
-        ctaBannerBtn: getText("cta_button", "Get in touch now"),
-      };
-
-  const stats = [
-    { icon: Users, num: content.stat1Num, label: content.stat1Label },
-    { icon: Heart, num: content.stat2Num, label: content.stat2Label },
-    { icon: Clock, num: content.stat3Num, label: content.stat3Label },
-    { icon: Video, num: content.stat4Num, label: content.stat4Label },
-  ];
-
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const heroTextY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  // Fallback-safe getters
+  const heroImage = c?.hero_image?.filename || imgOffice1;
+  const seoTitle = c?.seo_title || "Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer";
+  const seoDesc = c?.seo_description || "Lernen Sie das Team der Kanzlei Girardi & Auer kennen.";
 
   return (
     <>
-      <SEO
-        title={seo.title}
-        description={seo.description}
-        canonical="/ueber-mich"
-        keywords={seo.keywords}
-        lang={lang}
-        ogImage={getAsset("portrait_image", IMAGES.portrait)}
-      />
+      <Helmet>
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDesc} />
+        <meta name="keywords" content="Rechtsanwalt Team Innsbruck, Dr. Thomas Girardi, Bernd Auer, Anna Girardi, Anwalt Tirol" />
+        <link rel="canonical" href="https://www.girardi-auer.com/ueber-uns" />
+        <meta property="og:title" content="Über uns | Rechtsanwaltskanzlei Girardi & Auer" />
+        <meta property="og:description" content="Lernen Sie das Team der Kanzlei Girardi & Auer kennen. Erfahrene Rechtsanwälte in Innsbruck seit 1989." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://www.girardi-auer.com/ueber-uns" />
+      </Helmet>
 
-      {/* Video Hero */}
-      <section ref={heroRef} className="relative h-[40vh] min-h-[280px] md:h-[70vh] md:min-h-[500px] overflow-hidden">
-        <video
-          autoPlay
-          loop
-          muted
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-          src={getAsset("hero_video", HERO_VIDEO)}
-        />
-        <motion.div
-          className="relative h-full flex flex-col items-center justify-center text-center px-4"
-          style={{ y: heroTextY, opacity: heroOpacity }}
-        >
+      {/* Hero - Full Width Dark */}
+      <section className="relative pt-32 pb-20 bg-slate-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a365d] via-slate-900 to-slate-950"></div>
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#1a365d]/20 rounded-full blur-[128px] -translate-y-1/2 translate-x-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+            <motion.div initial="hidden" animate="visible" variants={stagger}>
+              <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/10 rounded-full mb-8">
+                <Award className="w-4 h-4" />
+                <span className="text-sm">{c?.hero_badge || "Seit 1989 in Innsbruck"}</span>
+              </motion.div>
+
+              <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl lg:text-6xl mb-6 leading-[1.1] tracking-tight">
+                {c?.hero_title_line1 || "Tradition trifft"}<br />
+                <span className="text-slate-400">{c?.hero_title_line2 || "Kompetenz"}</span>
+              </motion.h1>
+
+              <motion.p variants={fadeInUp} className="text-lg text-slate-300 leading-relaxed mb-10 max-w-lg">
+                {c?.hero_description || "Drei Generationen rechtlicher Expertise unter einem Dach. Wir verbinden langjährige Erfahrung mit modernem Denken für die beste Lösung Ihrer rechtlichen Anliegen."}
+              </motion.p>
+
+              <motion.div variants={fadeInUp} className="grid grid-cols-3 gap-8">
+                {[
+                  { value: c?.hero_stat_1_value || "35+", label: c?.hero_stat_1_label || "Jahre Erfahrung" },
+                  { value: c?.hero_stat_2_value || "9", label: c?.hero_stat_2_label || "Rechtsgebiete" },
+                  { value: c?.hero_stat_3_value || "3", label: c?.hero_stat_3_label || "Rechtsanwälte" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className="text-3xl sm:text-4xl text-white mb-1">{stat.value}</div>
+                    <div className="text-sm text-slate-400">{stat.label}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, x: 40 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative hidden lg:block"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                <ImageWithFallback
+                  src={heroImage}
+                  alt="Kanzlei Girardi & Auer"
+                  className="w-full h-full object-cover aspect-[4/3]"
+                />
+              </div>
+              <div className="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-2xl px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-900">Tiroler RAK</div>
+                    <div className="text-xs text-slate-500">Eingetragene Kanzlei</div>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Timeline */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-20"
+          >
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
+              <Scale className="w-4 h-4 text-slate-600" />
+              <span className="text-sm text-slate-600">Unsere Geschichte</span>
+            </motion.div>
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
+              Über drei Jahrzehnte Rechtsberatung
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Von der Gründung bis zur nächsten Generation – ein Überblick über unsere Kanzleigeschichte
+            </motion.p>
+          </motion.div>
+
+          <div className="relative max-w-4xl mx-auto">
+            <div className="absolute left-8 lg:left-1/2 top-0 bottom-0 w-px bg-slate-200 -translate-x-1/2"></div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={stagger}
+              className="space-y-16"
+            >
+              {timelineList.map((item, index) => (
+                <motion.div
+                  key={item.year}
+                  variants={fadeInUp}
+                  className={`relative flex items-start gap-8 ${
+                    index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
+                  }`}
+                >
+                  <div className="absolute left-8 lg:left-1/2 -translate-x-1/2 z-10">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#1a365d] to-[#0f2744] rounded-full flex items-center justify-center shadow-lg ring-4 ring-white">
+                      <span className="text-white text-sm">{item.year}</span>
+                    </div>
+                  </div>
+
+                  <div className={`ml-20 lg:ml-0 lg:w-1/2 ${
+                    index % 2 === 0 ? "lg:pr-16 lg:text-right" : "lg:pl-16 lg:ml-auto"
+                  }`}>
+                    <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 hover:shadow-lg transition-shadow">
+                      <h3 className="text-xl text-slate-900 mb-2">{item.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+
+          {/* Quote */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl mx-auto mt-20"
+          >
+            <div className="relative bg-[#1a365d] rounded-2xl p-10 text-center">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1a365d] rotate-45"></div>
+              <p className="text-lg text-white leading-relaxed italic">
+                &ldquo;{c?.quote_text || "Besonderen Wert legt die Kanzlei auf eine allumfassende Rechtsberatung und den persönlichen Kontakt zu ihren Klienten."}&rdquo;
+              </p>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Values - Horizontal Bento */}
+      <section className="py-24 bg-slate-50">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-16"
+          >
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
+              Unsere Werte
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Was uns auszeichnet und antreibt
+            </motion.p>
+          </motion.div>
+
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="grid md:grid-cols-2 gap-6"
+          >
+            {valuesData.map((value) => (
+              <motion.div
+                key={value.title}
+                variants={fadeInUp}
+                className="group bg-white rounded-2xl p-8 border border-slate-100 hover:shadow-xl transition-all duration-300 hover:border-[#1a365d]/20 relative overflow-hidden"
+              >
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${value.accent} scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300`}></div>
+                <div className="flex gap-6">
+                  <div className={`flex-shrink-0 w-14 h-14 bg-gradient-to-br ${value.accent} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <value.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl text-slate-900 mb-2">{value.title}</h3>
+                    <p className="text-slate-600 leading-relaxed">{value.desc}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Team - All 5 Members */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-20"
+          >
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
+              <Briefcase className="w-4 h-4 text-slate-600" />
+              <span className="text-sm text-slate-600">{c?.team_badge || "Unser Team"}</span>
+            </motion.div>
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
+              {c?.team_title || "Die Menschen hinter der Kanzlei"}
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
+              {c?.team_subtitle || "Lernen Sie die Menschen kennen, die sich mit Leidenschaft und Expertise für Ihre rechtlichen Anliegen einsetzen."}
+            </motion.p>
+          </motion.div>
+
+          <div className="space-y-20">
+            {team.map((member, index) => (
+              <motion.div
+                key={member.name}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-80px" }}
+                variants={stagger}
+                className="grid lg:grid-cols-5 gap-10 items-start"
+              >
+                {/* Image - Square */}
+                <motion.div
+                  variants={fadeInUp}
+                  className={`lg:col-span-2 ${index % 2 === 1 ? "lg:order-2" : ""}`}
+                >
+                  <div className="relative group">
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl ring-1 ring-slate-200">
+                      <ImageWithFallback
+                        src={member.image}
+                        alt={member.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    {/* Year badge */}
+                    <div className="absolute -bottom-4 right-6 bg-[#1a365d] text-white px-5 py-2.5 rounded-xl shadow-lg">
+                      <div className="text-sm">{member.since}</div>
+                    </div>
+                  </div>
+                </motion.div>
+
+                {/* Content */}
+                <motion.div
+                  variants={fadeInUp}
+                  className={`lg:col-span-3 flex flex-col justify-center ${index % 2 === 1 ? "lg:order-1" : ""}`}
+                >
+                  <div className="inline-flex items-center gap-2 text-sm text-[#1a365d] bg-[#1a365d]/5 px-3 py-1 rounded-full w-fit mb-4">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    {member.role}
+                  </div>
+                  <h3 className="text-3xl sm:text-4xl text-slate-900 mb-2">
+                    {member.name}
+                  </h3>
+                  <p className="text-lg text-[#1a365d] mb-6">
+                    {member.title}
+                  </p>
+                  <p className="text-slate-600 leading-relaxed mb-8 max-w-xl">
+                    {member.description}
+                  </p>
+
+                  {member.specializations.length > 0 && (
+                    <div className="mb-8">
+                      <h4 className="text-xs text-slate-500 uppercase tracking-widest mb-3">
+                        Schwerpunkte
+                      </h4>
+                      <div className="flex flex-wrap gap-2">
+                        {member.specializations.map((spec) => (
+                          <span
+                            key={spec}
+                            className="px-3 py-1.5 bg-slate-50 text-slate-700 text-sm rounded-lg border border-slate-200 hover:border-[#1a365d]/30 hover:bg-[#1a365d]/5 transition-colors"
+                          >
+                            {spec}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <a
+                    href="mailto:info@girardi-auer.com"
+                    className="inline-flex items-center gap-2 text-[#1a365d] hover:text-[#152d4d] group/link w-fit"
+                  >
+                    <Mail className="w-4 h-4" />
+                    <span>Kontakt aufnehmen</span>
+                    <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
+                  </a>
+                </motion.div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Sekretariat - Dark Banner (only secretariat staff) */}
+      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#1a365d]/20 rounded-full blur-[128px] -translate-y-1/2 translate-x-1/4"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
+            <motion.div variants={fadeInUp} className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl mb-4">
+                {c?.sekretariat_title || "Gemeinsam stark für Sie"}
+              </h2>
+              <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                {c?.sekretariat_subtitle || "Unser Sekretariat sorgt dafür, dass alles reibungslos abläuft. Sie sind Ihre ersten Ansprechpartner bei Terminvereinbarungen und organisatorischen Fragen."}
+              </p>
+            </motion.div>
+
+            <motion.div variants={fadeInUp} className="text-center">
+              <h3 className="text-lg text-slate-400 mb-6">Sekretariat</h3>
+              <div className="flex flex-wrap justify-center gap-4">
+                {sekretariat.map((s) => (
+                  <div
+                    key={s.name}
+                    className="bg-white/5 backdrop-blur-sm rounded-2xl px-8 py-6 border border-white/10 hover:bg-white/10 transition-all"
+                  >
+                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Users className="w-5 h-5 text-slate-300" />
+                    </div>
+                    <span className="text-white">{s.name}</span>
+                    <div className="text-sm text-slate-400 mt-1">{s.title}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 bg-white">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-12 lg:p-16 overflow-hidden"
           >
-            <p
-              className="text-white/70 text-[0.75rem] tracking-[0.3em] uppercase mb-4"
-              style={{ fontWeight: 400 }}
-            >
-              {getText("about_title", t.about.title)}
-            </p>
-            <h1
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: "clamp(2.5rem, 7vw, 5rem)",
-                fontWeight: 300,
-                lineHeight: 1,
-                color: "white",
-              }}
-            >
-              {getText("heading", t.about.heading).split("Mario")[0]}
-              <span style={{ fontWeight: 700 }}>Mario</span>
-            </h1>
-          </motion.div>
-        </motion.div>
-
-        {/* Scroll indicator */}
-        <motion.div
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-          animate={{ y: [0, 8, 0] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          style={{ opacity: heroOpacity }}
-        >
-          <div className="w-[1px] h-12 bg-white/30" />
-        </motion.div>
-      </section>
-
-      {/* What to Expect */}
-      <section className="py-24 md:py-32 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <SectionReveal>
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#1a365d]/5 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
+            <div className="relative grid lg:grid-cols-2 gap-8 items-center">
               <div>
-                <h2
-                  className="mb-8"
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: "clamp(2rem, 4vw, 3.2rem)",
-                    fontWeight: 300,
-                    lineHeight: 1.1,
-                  }}
-                >
-                  {content.expectTitle.split(" ").slice(0, -1).join(" ")}{" "}
-                  <span style={{ fontWeight: 700, fontStyle: "italic" }}>
-                    {content.expectTitle.split(" ").slice(-1)}
-                  </span>
+                <h2 className="text-3xl sm:text-4xl text-slate-900 mb-4">
+                  {c?.cta_title || "Bereit für ein Gespräch?"}
                 </h2>
-                <p className="text-black/75 text-[0.9rem] mb-5" style={{ lineHeight: 1.8, fontWeight: 300 }}>
-                  {getText("text1", t.about.text1)}
+                <p className="text-lg text-slate-600 leading-relaxed">
+                  {c?.cta_description || "Vereinbaren Sie ein unverbindliches Erstgespräch und lernen Sie uns persönlich kennen. Wir freuen uns auf Sie."}
                 </p>
-                <p className="text-black/75 text-[0.9rem] mb-5" style={{ lineHeight: 1.8, fontWeight: 300 }}>
-                  {getText("text2", t.about.text2)}
-                </p>
-                <p className="text-black/75 text-[0.9rem] mb-8" style={{ lineHeight: 1.8, fontWeight: 300 }}>
-                  {getText("text3", t.about.text3)}
-                </p>
-                <button
-                  onClick={() => openContact()}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white text-[0.82rem] tracking-[0.08em] uppercase cursor-pointer border-none hover:bg-black/80 transition-colors"
-                  style={{ fontWeight: 400 }}
-                >
-                  {content.contactCta}
-                </button>
               </div>
-            </SectionReveal>
-            <SectionReveal delay={0.2}>
-              <div className="relative">
-                <ImageWithFallback
-                  src={getAsset("portrait_image", IMAGES.portrait)}
-                  alt="Fotograf Mario Schubert – Hochzeitsfotograf und Tierfotograf aus Innsbruck, Tirol"
-                  className="w-full aspect-[4/5] object-cover"
-                />
-                <div className="absolute -bottom-4 -right-4 w-32 h-32 border border-black/10" />
-              </div>
-            </SectionReveal>
-          </div>
-        </div>
-      </section>
-
-      {/* Stats / Social Proof Numbers */}
-      <section className="py-16 md:py-20 bg-black text-white px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
-            {stats.map((stat, i) => (
-              <SectionReveal key={stat.label} delay={i * 0.1}>
-                <div className="text-center">
-                  <stat.icon size={22} className="mx-auto mb-3 text-white/40" />
-                  <p
-                    className="mb-1"
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      fontSize: "clamp(2rem, 4vw, 3rem)",
-                      fontWeight: 300,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {stat.num}
-                  </p>
-                  <p className="text-white/50 text-[0.78rem] tracking-wider uppercase" style={{ fontWeight: 300 }}>
-                    {stat.label}
-                  </p>
-                </div>
-              </SectionReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Mario in Action – Portrait Image + Text Side-by-Side */}
-      <section className="py-24 md:py-32 px-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-            <SectionReveal delay={0.1}>
-              <div className="flex justify-center lg:justify-start">
-                <div className="relative max-w-[380px] w-full">
-                  <ImageWithFallback
-                    src={getAsset("mario_action_image", IMAGES.marioAction)}
-                    alt="Mario Schubert bei einem Hundeshooting in Aktion – Tierfotograf Innsbruck"
-                    className="w-full aspect-[3/4] object-cover"
-                  />
-                  {/* Decorative frame */}
-                  <div className="absolute -top-3 -left-3 w-full h-full border border-black/10 -z-10" />
-                </div>
-              </div>
-            </SectionReveal>
-            <SectionReveal delay={0.2}>
-              <div>
-                <p
-                  className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
-                  style={{ fontWeight: 400 }}
+              <div className="flex flex-col sm:flex-row gap-4 lg:justify-end">
+                <Link
+                  to="/kontakt"
+                  className="inline-flex items-center justify-center gap-2 bg-[#1a365d] text-white px-8 py-4 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 hover:shadow-xl hover:-translate-y-0.5 group"
                 >
-                  {content.passionPretitle}
-                </p>
-                <h2
-                  className="mb-8"
-                  style={{
-                    fontFamily: "'Cormorant Garamond', serif",
-                    fontSize: "clamp(1.8rem, 3.5vw, 2.8rem)",
-                    fontWeight: 300,
-                    lineHeight: 1.15,
-                  }}
-                >
-                  {content.passionTitle}
-                </h2>
-                <p className="text-black/75 text-[0.9rem] mb-5" style={{ lineHeight: 1.8, fontWeight: 300 }}>
-                  {content.passionText1}
-                </p>
-                <p className="text-black/75 text-[0.9rem] mb-8" style={{ lineHeight: 1.8, fontWeight: 300 }}>
-                  {content.passionText2}
-                </p>
+                  {c?.cta_button_text || "Kontakt aufnehmen"}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
                 <a
-                  href="/tierfotografie"
-                  className="inline-flex items-center gap-2 text-[0.82rem] tracking-[0.08em] uppercase text-black no-underline border-b border-black/30 pb-1 hover:border-black transition-colors"
-                  style={{ fontWeight: 400 }}
+                  href="tel:+43512574095"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all shadow-sm"
                 >
-                  {content.passionCta} →
+                  {c?.cta_phone || "+43 512 574095"}
                 </a>
               </div>
-            </SectionReveal>
-          </div>
-        </div>
-      </section>
-
-      {/* Tagline Section */}
-      <section className="py-20 md:py-28 bg-[#f8f7f5] px-4">
-        <div className="max-w-4xl mx-auto">
-          <SectionReveal>
-            <div className="text-center mb-8">
-              <h2
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: "clamp(1.8rem, 4vw, 3rem)",
-                  fontWeight: 300,
-                  lineHeight: 1.3,
-                }}
-              >
-                {content.tagline.split(".").filter(Boolean).map((word, i) => (
-                  <span key={i}>{word.trim()}. </span>
-                ))}
-                <br />
-                <span style={{ fontWeight: 700, letterSpacing: "0.05em" }}>
-                  {content.taglineBold}
-                </span>
-              </h2>
             </div>
-            <p
-              className="text-black/65 text-[0.88rem] text-center max-w-2xl mx-auto"
-              style={{ lineHeight: 1.7, fontWeight: 300 }}
-            >
-              {content.taglineDesc}
-            </p>
-          </SectionReveal>
-        </div>
-      </section>
-
-      {/* Philosophy / Work Approach */}
-      <section className="py-24 md:py-32 px-4">
-        <div className="max-w-7xl mx-auto">
-          <SectionReveal>
-            <h2
-              className="text-center mb-16"
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: "clamp(2rem, 4vw, 3rem)",
-                fontWeight: 300,
-              }}
-            >
-              {getText("philosophy_title", t.about.philosophyTitle)}
-            </h2>
-          </SectionReveal>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-            {philosophyItems.map((item, i) => (
-              <SectionReveal key={item.title} delay={i * 0.15}>
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto mb-6 border border-black/10 flex items-center justify-center">
-                    <item.icon size={24} className="text-black/55" />
-                  </div>
-                  <h3
-                    className="mb-3"
-                    style={{
-                      fontFamily: "'Cormorant Garamond', serif",
-                      fontSize: "1.4rem",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {item.title}
-                  </h3>
-                  <p
-                    className="text-black/65 text-[0.85rem]"
-                    style={{ lineHeight: 1.7, fontWeight: 300 }}
-                  >
-                    {item.text}
-                  </p>
-                </div>
-              </SectionReveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <GoogleReviewsGrid
-        count={3}
-        title={content.testimonialsTitle}
-      />
-
-      {/* FAQ Section */}
-      <FAQSection
-        categories={getFAQsByCategories(PAGE_FAQ_CATEGORIES.about)}
-        title={{ de: "Häufig gestellte Fragen", en: "Frequently Asked Questions" }}
-      />
-
-      {/* Contact Section */}
-      <section className="py-24 md:py-32 bg-[#f8f7f5] px-4">
-        <div className="max-w-4xl mx-auto">
-          <SectionReveal>
-            <div className="text-center mb-4">
-              <p
-                className="text-[0.75rem] tracking-[0.3em] uppercase text-black/40 mb-4"
-                style={{ fontWeight: 400 }}
-              >
-                {content.contactPre}
-              </p>
-              <h2
-                style={{
-                  fontFamily: "'Cormorant Garamond', serif",
-                  fontSize: "clamp(2rem, 4vw, 3rem)",
-                  fontWeight: 300,
-                  marginBottom: "1rem",
-                }}
-              >
-                {content.contactTitle}
-              </h2>
-              <p
-                className="text-black/50 text-[0.9rem] mb-8"
-                style={{ lineHeight: 1.8, fontWeight: 300 }}
-              >
-                {content.contactText}
-              </p>
-
-              {/* Primary CTA */}
-              <button
-                onClick={() => openContact()}
-                className="inline-flex items-center gap-2 px-8 py-4 bg-black text-white text-[0.82rem] tracking-[0.1em] uppercase cursor-pointer border-none hover:bg-black/80 transition-colors mb-10"
-                style={{ fontWeight: 400 }}
-              >
-                {content.contactCta}
-              </button>
-
-              <p
-                className="text-black/50 text-[0.78rem] mb-6 tracking-wider uppercase"
-                style={{ fontWeight: 300 }}
-              >
-                {content.contactOrText}
-              </p>
-            </div>
-          </SectionReveal>
-
-          <SectionReveal delay={0.15}>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="mailto:servus@marioschub.com"
-                className="flex items-center justify-center gap-3 px-8 py-4 border border-black/10 hover:border-black/40 transition-all no-underline text-black group"
-              >
-                <Mail size={18} className="text-black/40 group-hover:text-black transition-colors" />
-                <span className="text-[0.85rem]" style={{ fontWeight: 400 }}>E-Mail</span>
-              </a>
-              <a
-                href="tel:+4915155338029"
-                className="flex items-center justify-center gap-3 px-8 py-4 border border-black/10 hover:border-black/40 transition-all no-underline text-black group"
-              >
-                <Phone size={18} className="text-black/40 group-hover:text-black transition-colors" />
-                <span className="text-[0.85rem]" style={{ fontWeight: 400 }}>
-                  {lang === "de" ? "Telefon" : "Phone"}
-                </span>
-              </a>
-              <a
-                href="https://wa.me/4915155338029"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 px-8 py-4 border border-black/10 hover:border-black/40 transition-all no-underline text-black group"
-              >
-                <svg
-                  className="text-black/40 group-hover:text-black transition-colors"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="currentColor"
-                >
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
-                </svg>
-                <span className="text-[0.85rem]" style={{ fontWeight: 400 }}>WhatsApp</span>
-              </a>
-            </div>
-          </SectionReveal>
-        </div>
-      </section>
-
-      {/* Final CTA Banner */}
-      <section className="py-20 md:py-28 bg-black text-white px-4">
-        <div className="max-w-5xl mx-auto text-center">
-          <SectionReveal>
-            <p
-              className="text-white/40 text-[0.75rem] tracking-[0.3em] uppercase mb-5"
-              style={{ fontWeight: 400 }}
-            >
-              {content.ctaBannerPre}
-            </p>
-            <h2
-              className="mb-4"
-              style={{
-                fontFamily: "'Cormorant Garamond', serif",
-                fontSize: "clamp(1.8rem, 4vw, 3rem)",
-                fontWeight: 300,
-                lineHeight: 1.2,
-                letterSpacing: "0.02em",
-              }}
-            >
-              {content.ctaBannerTitle}
-            </h2>
-            <p
-              className="text-white/50 text-[0.88rem] mb-10"
-              style={{ lineHeight: 1.7, fontWeight: 300 }}
-            >
-              {content.ctaBannerSub}
-            </p>
-            <button
-              onClick={() => openContact()}
-              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-black text-[0.82rem] tracking-[0.1em] uppercase cursor-pointer border-none hover:bg-white/90 transition-colors"
-              style={{ fontWeight: 400 }}
-            >
-              {content.ctaBannerBtn}
-            </button>
-          </SectionReveal>
+          </motion.div>
         </div>
       </section>
     </>
