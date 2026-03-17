@@ -3,6 +3,7 @@ import StoryblokClient from "storyblok-js-client";
 // Get the token
 const token = import.meta.env.VITE_STORYBLOK_TOKEN || "";
 console.log('[Storyblok Init] Token available:', token ? `${token.substring(0, 10)}...` : 'NO TOKEN FOUND');
+console.log('[Storyblok Init] Full token (for debug):', token); // TEMPORARY DEBUG
 
 // Create API client directly
 const storyblokApi = token ? new StoryblokClient({
@@ -15,6 +16,7 @@ const storyblokApi = token ? new StoryblokClient({
 }) : null;
 
 console.log('[Storyblok Init] API client created:', !!storyblokApi);
+console.log('[Storyblok Init] Environment:', import.meta.env.DEV ? 'development' : 'production');
 
 export { storyblokApi };
 
@@ -51,11 +53,16 @@ export async function getStory<T = any>(
   }
 
   try {
+    console.log(`[Storyblok] Fetching story: ${slug}`);
+    console.log(`[Storyblok] Version: draft (TESTING)`);
+    
     const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
-      version: import.meta.env.DEV ? "draft" : "published",
+      version: "draft", // TEMPORARY: Always use draft for testing
       cv: Date.now(), // Cache buster - forces fresh content
       ...params,
     });
+    
+    console.log(`[Storyblok] Story fetched successfully:`, slug, data.story);
     return data.story;
   } catch (error) {
     console.error(`Error fetching story ${slug}:`, error);
