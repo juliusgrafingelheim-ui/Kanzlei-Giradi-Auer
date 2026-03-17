@@ -169,9 +169,8 @@ export async function getStory<T = any>(
 
   const baseParams = { cv: Date.now(), ...params };
 
-  // Always try "draft" first since we use a Preview token.
-  // This ensures unpublished content (e.g. newly uploaded images) is visible.
-  // If draft fails (e.g. public token → 401), fall back to "published".
+  // Always try "draft" first (needs preview token) so unpublished
+  // assets (images) are visible immediately after upload.
   try {
     const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
       version: "draft",
@@ -182,7 +181,7 @@ export async function getStory<T = any>(
       return data.story;
     }
   } catch (draftError: any) {
-    // Draft failed – fall through to published
+    // Draft failed (likely 401 with public token) – fall through to published
     console.info(
       `[Storyblok] Draft fetch failed for "${slug}" (${draftError?.status || "unknown"}) – trying published...`
     );
