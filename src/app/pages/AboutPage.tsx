@@ -281,8 +281,8 @@ export function AboutPage() {
                     <Shield className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <div className="text-sm text-slate-900">Tiroler RAK</div>
-                    <div className="text-xs text-slate-500">Eingetragene Kanzlei</div>
+                    <div className="text-sm text-slate-900">{c?.hero_trust_title || "Tiroler RAK"}</div>
+                    <div className="text-xs text-slate-500">{c?.hero_trust_subtitle || "Eingetragene Kanzlei"}</div>
                   </div>
                 </div>
               </div>
@@ -303,13 +303,13 @@ export function AboutPage() {
           >
             <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
               <Scale className="w-4 h-4 text-slate-600" />
-              <span className="text-sm text-slate-600">Unsere Geschichte</span>
+              <span className="text-sm text-slate-600">{c?.timeline_badge || "Unsere Geschichte"}</span>
             </motion.div>
             <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
-              Über drei Jahrzehnte Rechtsberatung
+              {c?.timeline_title || "Über drei Jahrzehnte Rechtsberatung"}
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Von der Gründung bis zur nächsten Generation – ein Überblick über unsere Kanzleigeschichte
+              {c?.timeline_subtitle || "Von der Gründung bis zur nächsten Generation – ein Überblick über unsere Kanzleigeschichte"}
             </motion.p>
           </motion.div>
 
@@ -378,10 +378,10 @@ export function AboutPage() {
             className="text-center mb-16"
           >
             <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
-              Unsere Werte
+              {c?.values_title || "Unsere Werte"}
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Was uns auszeichnet und antreibt
+              {c?.values_subtitle || "Was uns auszeichnet und antreibt"}
             </motion.p>
           </motion.div>
 
@@ -518,7 +518,7 @@ export function AboutPage() {
                     className="inline-flex items-center gap-2 text-[#1a365d] hover:text-[#152d4d] group/link w-fit"
                   >
                     <Mail className="w-4 h-4" />
-                    <span>Kontakt aufnehmen</span>
+                    <span>{c?.member_contact_text || "Kontakt aufnehmen"}</span>
                     <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                   </a>
                 </motion.div>
@@ -549,7 +549,7 @@ export function AboutPage() {
             </motion.div>
 
             <motion.div variants={fadeInUp} className="text-center">
-              <h3 className="text-lg text-slate-400 mb-6">Sekretariat</h3>
+              <h3 className="text-lg text-slate-400 mb-6">{c?.sekretariat_label || "Sekretariat"}</h3>
               <div className="flex flex-wrap justify-center gap-4">
                 {sekretariat.map((s) => (
                   <div

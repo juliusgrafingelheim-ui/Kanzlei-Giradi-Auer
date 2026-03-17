@@ -157,7 +157,7 @@ export function HomePage() {
             >
               <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/10 rounded-full mb-8">
                 <Scale className="w-4 h-4" />
-                <span className="text-sm">Seit 1989 in Innsbruck</span>
+                <span className="text-sm">{pageContent.hero_badge || "Seit 1989 in Innsbruck"}</span>
               </motion.div>
 
               <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl mb-6 leading-[1.08] tracking-tight">
@@ -220,15 +220,15 @@ export function HomePage() {
                     <Shield className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
-                    <div className="text-sm text-slate-900">Tiroler Rechtsanwaltskammer</div>
-                    <div className="text-xs text-slate-500">Eingetragene Kanzlei</div>
+                    <div className="text-sm text-slate-900">{pageContent.hero_trust_title || "Tiroler Rechtsanwaltskammer"}</div>
+                    <div className="text-xs text-slate-500">{pageContent.hero_trust_subtitle || "Eingetragene Kanzlei"}</div>
                   </div>
                 </div>
               </div>
               {/* Second floating badge */}
               <div className="absolute -top-4 -right-4 bg-[#1a365d] rounded-xl shadow-2xl px-5 py-3 text-white">
-                <div className="text-2xl">35+</div>
-                <div className="text-xs text-slate-300">Jahre</div>
+                <div className="text-2xl">{pageContent.hero_years_number || "35+"}</div>
+                <div className="text-xs text-slate-300">{pageContent.hero_years_label || "Jahre"}</div>
               </div>
             </motion.div>
           </div>
@@ -240,10 +240,10 @@ export function HomePage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-white/80 text-sm">
             {[
-              "Unverbindliches Erstgespräch",
-              "35+ Jahre Erfahrung",
-              "Persönliche Betreuung",
-              "Zentral in Innsbruck",
+              pageContent.trustbar_1 || "Unverbindliches Erstgespräch",
+              pageContent.trustbar_2 || "35+ Jahre Erfahrung",
+              pageContent.trustbar_3 || "Persönliche Betreuung",
+              pageContent.trustbar_4 || "Zentral in Innsbruck",
             ].map((item) => (
               <div key={item} className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-white/50" />
@@ -266,13 +266,13 @@ export function HomePage() {
           >
             <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
               <MessageSquare className="w-4 h-4 text-slate-600" />
-              <span className="text-sm text-slate-600">Unser Vorgehen</span>
+              <span className="text-sm text-slate-600">{pageContent.process_badge || "Unser Vorgehen"}</span>
             </motion.div>
             <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
-              In vier Schritten zu Ihrem Recht
+              {pageContent.process_title || "In vier Schritten zu Ihrem Recht"}
             </motion.h2>
             <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Klar, strukturiert und immer an Ihrer Seite
+              {pageContent.process_subtitle || "Klar, strukturiert und immer an Ihrer Seite"}
             </motion.p>
           </motion.div>
 
@@ -320,7 +320,7 @@ export function HomePage() {
           >
             <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-slate-200 mb-4">
               <Scale className="w-4 h-4 text-[#1a365d]" />
-              <span className="text-sm text-[#1a365d]">Fachgebiete</span>
+              <span className="text-sm text-[#1a365d]">{pageContent.expertise_badge || "Fachgebiete"}</span>
             </motion.div>
             <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
               {pageContent.expertise_title || "Unsere Expertise"}
@@ -372,7 +372,7 @@ export function HomePage() {
               to="/rechtsgebiete"
               className="inline-flex items-center gap-2 bg-[#1a365d] text-white px-8 py-4 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 hover:shadow-xl hover:-translate-y-0.5 group"
             >
-              Alle 9 Rechtsgebiete ansehen
+              {pageContent.expertise_cta_text || "Alle 9 Rechtsgebiete ansehen"}
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
           </motion.div>
@@ -391,7 +391,7 @@ export function HomePage() {
             >
               <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-6">
                 <Briefcase className="w-4 h-4 text-slate-600" />
-                <span className="text-sm text-slate-600">Unser Team</span>
+                <span className="text-sm text-slate-600">{pageContent.team_badge || "Unser Team"}</span>
               </motion.div>
 
               <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-6">
@@ -425,7 +425,7 @@ export function HomePage() {
                   to="/ueber-uns"
                   className="inline-flex items-center gap-2 bg-[#1a365d] text-white px-6 py-3 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 group"
                 >
-                  Team kennenlernen
+                  {pageContent.team_cta_text || "Team kennenlernen"}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>
@@ -441,6 +441,7 @@ export function HomePage() {
               <div className="space-y-4">
                 <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_1) || "t1"}
                     src={getAssetUrl(pageContent.team_image_1) || ""}
                     alt="Dr. Thomas Girardi"
                     className="w-full h-full object-cover"
@@ -448,6 +449,7 @@ export function HomePage() {
                 </div>
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_3) || "t3"}
                     src={getAssetUrl(pageContent.team_image_3) || ""}
                     alt="Mag. Anna Girardi"
                     className="w-full h-full object-cover"
@@ -457,6 +459,7 @@ export function HomePage() {
               <div className="space-y-4 pt-8">
                 <div className="aspect-[4/3] rounded-2xl overflow-hidden bg-slate-100 shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_2) || "t2"}
                     src={getAssetUrl(pageContent.team_image_2) || ""}
                     alt="DI (FH) Mag. Bernd Auer"
                     className="w-full h-full object-cover"
@@ -464,6 +467,7 @@ export function HomePage() {
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden shadow-xl">
                   <ImageWithFallback
+                    key={getAssetUrl(pageContent.team_image_4) || "t4"}
                     src={getAssetUrl(pageContent.team_image_4) || ""}
                     alt="Mag. B.A. Constanze Girardi"
                     className="w-full h-full object-cover"
@@ -551,19 +555,19 @@ export function HomePage() {
               <motion.div variants={fadeInUp} className="grid sm:grid-cols-2 gap-4 mb-10">
                 <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/5">
                   <MapPin className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <span className="text-slate-200 text-sm">Stainerstraße 2, Innsbruck</span>
+                  <span className="text-slate-200 text-sm">{pageContent.location_info_1 || "Stainerstraße 2, Innsbruck"}</span>
                 </div>
                 <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/5">
                   <Phone className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <a href="tel:+43512574095" className="text-slate-200 text-sm hover:text-white transition-colors">+43 512 574095</a>
+                  <a href="tel:+43512574095" className="text-slate-200 text-sm hover:text-white transition-colors">{pageContent.location_info_2 || "+43 512 574095"}</a>
                 </div>
                 <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/5">
                   <Clock className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <span className="text-slate-200 text-sm">Mo-Fr: 08:00-12:00</span>
+                  <span className="text-slate-200 text-sm">{pageContent.location_info_3 || "Mo-Fr: 08:00-12:00"}</span>
                 </div>
                 <div className="flex items-center gap-3 bg-white/5 rounded-xl px-4 py-3 border border-white/5">
                   <Award className="w-5 h-5 text-slate-400 flex-shrink-0" />
-                  <span className="text-slate-200 text-sm">Erstgespräch kostenlos</span>
+                  <span className="text-slate-200 text-sm">{pageContent.location_info_4 || "Erstgespräch kostenlos"}</span>
                 </div>
               </motion.div>
 
@@ -580,7 +584,7 @@ export function HomePage() {
                   className="inline-flex items-center justify-center gap-2 border border-white/20 text-white px-8 py-4 rounded-xl hover:bg-white/10 transition-all"
                 >
                   <Phone className="w-5 h-5" />
-                  Jetzt anrufen
+                  {pageContent.location_phone_text || "Jetzt anrufen"}
                 </a>
               </motion.div>
             </motion.div>

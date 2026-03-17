@@ -195,12 +195,12 @@ export function PracticeAreasPage() {
             <motion.div variants={fadeInUp} className="mt-10 flex items-center gap-6">
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <Shield className="w-4 h-4" />
-                <span>9 Rechtsgebiete</span>
+                <span>{pageContent.hero_stat_1 || "9 Rechtsgebiete"}</span>
               </div>
               <div className="w-px h-4 bg-slate-700"></div>
               <div className="flex items-center gap-2 text-sm text-slate-400">
                 <Scale className="w-4 h-4" />
-                <span>35+ Jahre Erfahrung</span>
+                <span>{pageContent.hero_stat_2 || "35+ Jahre Erfahrung"}</span>
               </div>
             </motion.div>
           </motion.div>
