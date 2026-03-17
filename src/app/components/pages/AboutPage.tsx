@@ -128,28 +128,39 @@ export function AboutPage() {
     return "";
   };
 
-  // Build team from Storyblok or fallback
-  const teamData = [];
-  for (let i = 1; i <= 5; i++) {
-    const name = c?.[`member_${i}_name`];
-    if (name) {
-      const specs = [];
-      for (let s = 1; s <= 6; s++) {
-        const sp = c[`member_${i}_spec_${s}`];
-        if (sp) specs.push(sp);
-      }
-      teamData.push({
-        name,
-        title: c[`member_${i}_title`] || "",
-        role: c[`member_${i}_role`] || "",
-        image: getAssetUrl(c[`member_${i}_image`]),
-        description: c[`member_${i}_description`] || "",
-        since: c[`member_${i}_since`] || "",
-        specializations: specs,
-      });
+  // Build team: start with hardcoded fallback, then overlay ANY Storyblok fields
+  // This ensures images from Storyblok are used even if not all text fields are populated
+  const team = teamMembers.map((fallback, idx) => {
+    const i = idx + 1;
+    if (!c) return fallback;
+
+    // Collect specializations from Storyblok (if any)
+    const specs: string[] = [];
+    for (let s = 1; s <= 6; s++) {
+      const sp = c[`member_${i}_spec_${s}`];
+      if (sp) specs.push(sp);
     }
-  }
-  const team = teamData.length > 0 ? teamData : teamMembers;
+
+    // Get Storyblok image for this member
+    const sbImage = getAssetUrl(c[`member_${i}_image`]);
+
+    // Debug: log what Storyblok returns for this member's image field
+    if (import.meta.env.DEV) {
+      const raw = c[`member_${i}_image`];
+      if (raw) console.info(`[About] member_${i}_image raw:`, raw, '→ resolved:', sbImage);
+    }
+
+    return {
+      ...fallback,
+      name: c[`member_${i}_name`] || fallback.name,
+      title: c[`member_${i}_title`] || fallback.title,
+      role: c[`member_${i}_role`] || fallback.role,
+      image: sbImage || fallback.image,
+      description: c[`member_${i}_description`] || fallback.description,
+      since: c[`member_${i}_since`] || fallback.since,
+      specializations: specs.length > 0 ? specs : fallback.specializations,
+    };
+  });
 
   // Build timeline from Storyblok or fallback
   const timelineData = [];
@@ -188,7 +199,7 @@ export function AboutPage() {
   ];
 
   // Fallback-safe getters
-  const heroImage = c?.hero_image?.filename || imgOffice1;
+  const heroImage = getAssetUrl(c?.hero_image) || imgOffice1;
   const seoTitle = c?.seo_title || "Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer";
   const seoDesc = c?.seo_description || "Lernen Sie das Team der Kanzlei Girardi & Auer kennen.";
 
