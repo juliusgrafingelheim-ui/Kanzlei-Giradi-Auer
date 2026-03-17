@@ -17,6 +17,8 @@ export function ContactPage() {
   const c = content as any;
 
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -26,10 +28,30 @@ export function ContactPage() {
     rechtsgebiet: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setFormSubmitted(true);
-    setTimeout(() => setFormSubmitted(false), 5000);
+    setIsSubmitting(true);
+    setSubmitError("");
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Fehler beim Senden");
+      }
+
+      setFormSubmitted(true);
+      setFormData({ name: "", email: "", phone: "", subject: "", message: "", rechtsgebiet: "" });
+    } catch (err: any) {
+      setSubmitError(err.message || "Ein Fehler ist aufgetreten. Bitte versuchen Sie es erneut.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Build rechtsgebiet options from Storyblok or fallback
@@ -273,16 +295,23 @@ export function ContactPage() {
                   <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <button
                       type="submit"
-                      className="group inline-flex items-center justify-center gap-2 bg-[#1a365d] text-white px-8 py-4 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 hover:shadow-xl hover:shadow-[#1a365d]/30 hover:-translate-y-0.5"
+                      disabled={isSubmitting}
+                      className="group inline-flex items-center justify-center gap-2 bg-[#1a365d] text-white px-8 py-4 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 hover:shadow-xl hover:shadow-[#1a365d]/30 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
                     >
-                      Nachricht senden
-                      <Send className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      {isSubmitting ? "Wird gesendet..." : "Nachricht senden"}
+                      <Send className={`h-5 w-5 transition-transform ${isSubmitting ? "animate-pulse" : "group-hover:translate-x-1"}`} />
                     </button>
                     <p className="text-xs text-slate-400 max-w-xs">
                       Mit dem Absenden stimmen Sie unserer{" "}
                       <a href="/datenschutz" className="text-[#1a365d] hover:underline">Datenschutzerklärung</a> zu.
                     </p>
                   </div>
+
+                  {submitError && (
+                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+                      {submitError}
+                    </div>
+                  )}
                 </motion.form>
               )}
             </motion.div>
@@ -343,18 +372,18 @@ export function ContactPage() {
 
               {/* Trust Badges */}
               <motion.div variants={fadeInUp} className="bg-[#1a365d] rounded-2xl p-6 text-white">
-                <div className="flex items-center gap-3 mb-4">
-                  <Shield className="w-5 h-5 text-white/70" />
+                <div className="flex items-center gap-3 mb-5">
+                  <Shield className="w-5 h-5 text-white/70 flex-shrink-0" />
                   <h3 className="text-white">{c?.trust_title || "Ihre Vorteile"}</h3>
                 </div>
-                <div className="space-y-3">
+                <ul className="space-y-3.5">
                   {trustItems.map((item) => (
-                    <div key={item} className="flex items-center gap-3 text-sm">
-                      <CheckCircle2 className="w-4 h-4 text-white/60 flex-shrink-0" />
+                    <li key={item} className="flex items-start gap-3 text-sm">
+                      <CheckCircle2 className="w-4 h-4 text-white/60 flex-shrink-0 mt-0.5" />
                       <span className="text-slate-200">{item}</span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </motion.div>
 
               {/* Address */}
