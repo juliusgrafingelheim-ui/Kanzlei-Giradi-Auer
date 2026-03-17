@@ -1,0 +1,94 @@
+import { storyblokInit, apiPlugin, StoryblokClient } from "@storyblok/react";
+
+// Initialize Storyblok
+const { storyblokApi } = storyblokInit({
+  accessToken: import.meta.env.VITE_STORYBLOK_TOKEN || "",
+  use: [apiPlugin],
+  apiOptions: {
+    region: "eu", // or 'us' depending on your region
+  },
+});
+
+export { storyblokApi };
+
+// Type definitions
+export interface StoryblokStory<T = any> {
+  id: number;
+  uuid: string;
+  name: string;
+  slug: string;
+  full_slug: string;
+  created_at: string;
+  published_at: string;
+  content: T;
+}
+
+export interface SEO {
+  component: "seo";
+  title: string;
+  description?: string;
+  image?: { filename: string; alt?: string };
+  keywords?: string;
+}
+
+// Helper to fetch a single story
+export async function getStory<T = any>(
+  slug: string,
+  params?: any
+): Promise<StoryblokStory<T> | null> {
+  try {
+    const { data } = await storyblokApi!.get(`cdn/stories/${slug}`, {
+      version: import.meta.env.DEV ? "draft" : "published",
+      ...params,
+    });
+    return data.story;
+  } catch (error) {
+    console.error(`Error fetching story ${slug}:`, error);
+    return null;
+  }
+}
+
+// Helper to fetch multiple stories
+export async function getStories<T = any>(
+  params?: any
+): Promise<StoryblokStory<T>[]> {
+  try {
+    const { data } = await storyblokApi!.get("cdn/stories", {
+      version: import.meta.env.DEV ? "draft" : "published",
+      ...params,
+    });
+    return data.stories;
+  } catch (error) {
+    console.error("Error fetching stories:", error);
+    return [];
+  }
+}
+
+// Helper to get image URL from Storyblok asset
+export function getImageUrl(
+  image: { filename: string } | string | undefined,
+  options?: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    format?: "webp" | "png" | "jpg";
+  }
+): string {
+  if (!image) return "";
+  
+  const filename = typeof image === "string" ? image : image.filename;
+  if (!filename) return "";
+
+  // Storyblok Image Service
+  const params = new URLSearchParams();
+  if (options?.width) params.append("m", `${options.width}x0`);
+  if (options?.quality) params.append("quality", options.quality.toString());
+  if (options?.format) params.append("format", options.format);
+
+  return params.toString() ? `${filename}/m/${params.toString()}` : filename;
+}
+
+// Get global settings
+export async function getGlobalSettings() {
+  return getStory("global-settings");
+}

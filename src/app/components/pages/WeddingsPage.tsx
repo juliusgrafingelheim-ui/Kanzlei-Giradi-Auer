@@ -1,0 +1,1025 @@
+import { useState, useMemo, useCallback, useRef } from "react";
+import { ArrowRight, Check, Camera, Heart, Users, Sparkles, Music, Cake, PartyPopper, Star, Download, Sun, Palette, Contrast, Clock, MessageCircle, FileText, CalendarCheck, CameraIcon, Gift, Smartphone, Play } from "lucide-react";
+import { useLanguage } from "../LanguageContext";
+import { SectionReveal } from "../SectionReveal";
+import { SEO } from "../SEO";
+import { Lightbox, useLightbox } from "../Lightbox";
+import { motion, useScroll, useTransform } from "motion/react";
+import { ImageWithFallback } from "../figma/ImageWithFallback";
+import { useContactModal } from "../ContactModal";
+import { MasonryGrid } from "../MasonryGrid";
+import { FAQSection } from "../FAQSection";
+
+import { getFAQsByCategories, PAGE_FAQ_CATEGORIES } from "../faqData";
+import { usePageContent } from "../storyblok";
+import { useWeddingPackages } from "../usePackagesFormatted";
+import { useImages } from "../useImages";
+import { useShuffledGallery } from "../useShuffledGallery";
+import { GoogleReviewsGrid } from "../GoogleReviews";
+
+const HERO_VIDEO = "https://ik.imagekit.io/r2yqrg6np/Lo%CC%88wenClip_fu%CC%88r_Webseite_compressed.mp4?updatedAt=1773077988312";
+
+const IMAGES = {
+  hero: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_152738_0428(LowRes).jpg?updatedAt=1773007053353",
+  photo1: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/5048_IG.jpg?updatedAt=1773007053682",
+  photo2: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_151924_0405(LowRes).jpg?updatedAt=1773007048480",
+  video: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/20251025_8D2A5136_(WebRes)-2.jpg?updatedAt=1773007047706",
+  details: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_153606_0453(LowRes).jpg?updatedAt=1773007049638",
+  galleryBride: "https://images.unsplash.com/photo-1632378464836-a6a856632552?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwZ2V0dGluZyUyMHJlYWR5JTIwYnJpZGUlMjBwcmVwYXJhdGlvbnxlbnwxfHx8fDE3NzI5OTc1MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  galleryBouquet: "https://images.unsplash.com/photo-1684244177286-8625c54bce6d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwYm91cXVldCUyMGJyaWRlJTIwZGV0YWlsfGVufDF8fHx8MTc3Mjk5NzUzMnww&ixlib=rb-4.1.0&q=80&w=1080",
+  galleryCeremony: "https://images.unsplash.com/photo-1769812344337-ec16a1b7cef8?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwY2VyZW1vbnklMjBvdXRkb29yJTIwZWxlZ2FudHxlbnwxfHx8fDE3NzI5OTc1MzF8MA&ixlib=rb-4.1.0&q=80&w=1080",
+  galleryDance: "https://images.unsplash.com/photo-1704455308461-1e18a7e11d28?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3ZWRkaW5nJTIwY291cGxlJTIwZmlyc3QlMjBkYW5jZSUyMHJlY2VwdGlvbnxlbnwxfHx8fDE3NzI5OTc1MzJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+};
+
+export function WeddingsPage() {
+  const { t, lang } = useLanguage();
+  const [activeTab, setActiveTab] = useState<"photo" | "video">("photo");
+  const { open, index, openLightbox, closeLightbox } = useLightbox();
+  const { openContact } = useContactModal();
+  const [galleryCategory, setGalleryCategory] = useState<string>("all");
+  const [galleryMode, setGalleryMode] = useState<"fotos" | "videos">("fotos");
+  const { getImagesForPage } = useImages();
+  const { photoPackages: weddingPhotoPackages, videoPackages: weddingVideoPackages, addOns, shotListItems } = useWeddingPackages(lang);
+  const { getText, getAsset, getIcon } = usePageContent("weddings", lang);
+
+  // Video Hero parallax
+  const heroRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"],
+  });
+  const heroTextY = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+
+  // Reset visibleCount when category changes
+  const GALLERY_PAGE_SIZE = 20;
+  const [visibleCount, setVisibleCount] = useState(GALLERY_PAGE_SIZE);
+
+  const galleryCategories = [
+    { key: "all", label: { de: "Alle", en: "All" } },
+    { key: "paarshooting", label: { de: "Paarshooting", en: "Couple Shoot" } },
+    { key: "freie-trauung", label: { de: "Freie Trauung", en: "Outdoor Ceremony" } },
+    { key: "kirchliche-trauung", label: { de: "Kirchliche Trauung", en: "Church Ceremony" } },
+    { key: "getting-ready", label: { de: "Getting Ready", en: "Getting Ready" } },
+    { key: "standesamt", label: { de: "Standesamt", en: "Civil Ceremony" } },
+    { key: "party", label: { de: "Abend-Party", en: "Evening Party" } },
+  ];
+
+  // Get all wedding images from Google Sheets (with fallback)
+  const weddingGallery = useMemo(
+    () => getImagesForPage("hochzeit", undefined, lang),
+    [getImagesForPage, lang]
+  );
+
+  // Shuffle gallery on mount for varied display each page load
+  const shuffledGallery = useShuffledGallery(weddingGallery);
+
+  // Filter by selected category
+  const filteredGallery = useMemo(
+    () => galleryCategory === "all" ? shuffledGallery : shuffledGallery.filter((img) => img.category === galleryCategory),
+    [shuffledGallery, galleryCategory]
+  );
+
+  // Visible slice for Load More
+  const visibleGallery = useMemo(
+    () => filteredGallery.slice(0, visibleCount),
+    [filteredGallery, visibleCount]
+  );
+
+  const hasMore = visibleCount < filteredGallery.length;
+
+  // Reset visible count when filter changes
+  const handleCategoryChange = useCallback((key: string) => {
+    setGalleryCategory(key);
+    setVisibleCount(GALLERY_PAGE_SIZE);
+  }, []);
+
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount((prev) => prev + GALLERY_PAGE_SIZE);
+  }, []);
+
+  const seo = lang === "de"
+    ? {
+        title: "Hochzeitsfotograf Innsbruck & Tirol | Mario Schubert Photography",
+        description: "Hochzeitsfotografie & Videografie in Innsbruck, Tirol und Bayern. Zeitlose, authentische Hochzeitsreportagen. Natuerlich, cineastisch, emotional. Jetzt anfragen!",
+        keywords: "Hochzeitsfotograf Innsbruck, Hochzeitsfotografie Tirol, Hochzeitsvideograf Bayern, Hochzeitsfotograf Muenchen, Wedding Photographer Austria, Hochzeitsreportage Alpen",
+      }
+    : {
+        title: "Wedding Photographer Innsbruck & Tyrol | Mario Schubert Photography",
+        description: "Wedding photography & videography in Innsbruck, Tyrol and Bavaria. Timeless, authentic wedding reportages. Natural, cinematic, emotional. Inquire now!",
+        keywords: "wedding photographer Innsbruck, wedding photography Tyrol, wedding videographer Bavaria, wedding photographer Munich, destination wedding Alps",
+      };
+
+  return (
+    <>
+      <SEO
+        title={seo.title}
+        description={seo.description}
+        canonical="/hochzeiten"
+        keywords={seo.keywords}
+        lang={lang}
+        ogImage={getAsset("hero_image", IMAGES.hero)}
+      />
+
+      {/* Hero */}
+      <section ref={heroRef} className="relative h-[40vh] min-h-[280px] md:h-[70vh] md:min-h-[500px] overflow-hidden">
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover"
+          src={getAsset("hero_video", HERO_VIDEO)}
+          poster={getAsset("hero_image", IMAGES.hero)}
+        />
+        <motion.div
+          className="relative h-full flex flex-col items-center justify-center text-center px-4"
+          style={{ y: heroTextY, opacity: heroOpacity }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 1, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <p
+              className="text-white/70 text-[0.75rem] tracking-[0.3em] uppercase mb-4"
+              style={{ fontWeight: 400 }}
+            >
+              {getText("hero_title", t.weddings.heroTitle)}
+            </p>
+            <h1
+              style={{
+                fontFamily: "'Cormorant Garamond', serif",
+                fontSize: "clamp(2.5rem, 7vw, 5rem)",
+                fontWeight: 300,
+                lineHeight: 1,
+                color: "white",
+              }}
+            >
+              {getText("hero_subtitle", t.weddings.heroSubtitle)}
+            </h1>
+          </motion.div>
+        </motion.div>
+
+        {/* Scroll indicator */}
+        <motion.div
+          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, 8, 0] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          style={{ opacity: heroOpacity }}
+        >
+          <div className="w-[1px] h-12 bg-white/30" />
+        </motion.div>
+      </section>
+
+      {/* Wedding Photography */}
+      <section className="py-24 md:py-32 px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <SectionReveal>
+              <div>
+                <p
+                  className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                  style={{ fontWeight: 400 }}
+                >
+                  {getText("photo_title", t.weddings.photoTitle)}
+                </p>
+                <h2
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                    fontWeight: 700,
+                    lineHeight: 1.05,
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  {getText("photo_heading", t.weddings.photoHeading)}
+                </h2>
+                <p
+                  className="text-black/70 text-[0.9rem] mb-8"
+                  style={{ lineHeight: 1.8, fontWeight: 300 }}
+                >
+                  {getText("photo_text", t.weddings.photoText)}
+                </p>
+                <a
+                  href="#packages"
+                  className="inline-flex items-center gap-2 text-black border border-black px-8 py-3 text-[0.8rem] tracking-[0.15em] uppercase no-underline hover:bg-black hover:text-white transition-all duration-300"
+                  style={{ fontWeight: 400 }}
+                >
+                  {getText("photo_packages", t.weddings.photoPackages)}
+                </a>
+              </div>
+            </SectionReveal>
+            <SectionReveal delay={0.2}>
+              <div className="grid grid-cols-2 gap-3">
+                <ImageWithFallback
+                  src={getAsset("photo1_image", IMAGES.photo1)}
+                  alt="Elegante Hochzeitszeremonie in Tirol – zeitlose Hochzeitsfotografie von Mario Schubert Innsbruck"
+                  className="w-full aspect-[3/4] object-cover"
+                />
+                <ImageWithFallback
+                  src={getAsset("photo2_image", IMAGES.photo2)}
+                  alt="Emotionales Brautportrait – authentische Hochzeitsfotografie in den Alpen"
+                  className="w-full aspect-[3/4] object-cover mt-12"
+                />
+              </div>
+            </SectionReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Wedding Videography */}
+      <section className="py-24 md:py-32 bg-[#f8f7f5] px-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+            <SectionReveal>
+              <div className="order-2 lg:order-1 grid grid-cols-2 gap-3">
+                <ImageWithFallback
+                  src={getAsset("video_image", IMAGES.video)}
+                  alt="Erster Tanz bei Hochzeitsfeier – Hochzeitsvideografie Bayern und Tirol"
+                  className="w-full aspect-[3/4] object-cover mt-12"
+                />
+                <ImageWithFallback
+                  src={getAsset("details_image", IMAGES.details)}
+                  alt="Eheringe Detailaufnahme – Hochzeitsfotograf Innsbruck Detailfotografie"
+                  className="w-full aspect-[3/4] object-cover"
+                />
+              </div>
+            </SectionReveal>
+            <SectionReveal delay={0.2}>
+              <div className="order-1 lg:order-2">
+                <p
+                  className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                  style={{ fontWeight: 400 }}
+                >
+                  {getText("video_title", t.weddings.videoTitle)}
+                </p>
+                <h2
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: "clamp(2rem, 4vw, 3.5rem)",
+                    fontWeight: 700,
+                    lineHeight: 1.05,
+                    marginBottom: "1.5rem",
+                  }}
+                >
+                  {getText("video_heading", t.weddings.videoHeading)}
+                </h2>
+                <p
+                  className="text-black/70 text-[0.9rem] mb-8"
+                  style={{ lineHeight: 1.8, fontWeight: 300 }}
+                >
+                  {getText("video_text", t.weddings.videoText)}
+                </p>
+                <a
+                  href="#packages"
+                  className="inline-flex items-center gap-2 text-black border border-black px-8 py-3 text-[0.8rem] tracking-[0.15em] uppercase no-underline hover:bg-black hover:text-white transition-all duration-300"
+                  style={{ fontWeight: 400 }}
+                >
+                  {getText("video_packages", t.weddings.videoPackages)}
+                </a>
+              </div>
+            </SectionReveal>
+          </div>
+        </div>
+      </section>
+
+      {/* Shot List / Aufnahmeliste */}
+      <section className="py-24 md:py-32 px-4">
+        <div className="max-w-5xl mx-auto">
+          <SectionReveal>
+            <div className="text-center mb-16">
+              <p
+                className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("shotlist_pretitle", t.weddings.shotListTitle)}
+              </p>
+              <h2
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: "clamp(2rem, 4vw, 3rem)",
+                  fontWeight: 300,
+                }}
+              >
+                {getText("shotlist_title", t.weddings.shotListSubtitle)}
+              </h2>
+            </div>
+          </SectionReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {shotListItems.map((item, i) => (
+              <SectionReveal key={item.title} delay={i * 0.08}>
+                <div className="flex gap-4">
+                  <div className="w-10 h-10 shrink-0 border border-black/10 flex items-center justify-center mt-1">
+                    <item.icon size={18} className="text-black/50" />
+                  </div>
+                  <div>
+                    <h3
+                      className="mb-1"
+                      style={{
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: "1.2rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.title}
+                    </h3>
+                    <p
+                      className="text-black/65 text-[0.82rem]"
+                      style={{ lineHeight: 1.6, fontWeight: 300 }}
+                    >
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              </SectionReveal>
+            ))}
+          </div>
+
+          <SectionReveal delay={0.5}>
+            <p
+              className="text-center text-black/55 text-[0.82rem] mt-12 max-w-xl mx-auto"
+              style={{ lineHeight: 1.7, fontWeight: 300, fontStyle: "italic" }}
+            >
+              {getText("shotlist_note", lang === "de"
+                ? "Nat\u00FCrlich ist jede Hochzeit anders \u2013 wir stimmen den Ablauf vorher gemeinsam ab, damit ich genau die Momente einfange, die euch wichtig sind."
+                : "Of course every wedding is different \u2013 we coordinate the schedule together beforehand so I capture exactly the moments that matter to you.")}
+            </p>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* Photography Styles – from Wedding Guide */}
+      <section className="py-24 md:py-32 bg-[#f8f7f5] px-4">
+        <div className="max-w-5xl mx-auto">
+          <SectionReveal>
+            <div className="text-center mb-16">
+              <p
+                className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("styles_pretitle", lang === "de" ? "BILDSPRACHE" : "VISUAL LANGUAGE")}
+              </p>
+              <h2
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: "clamp(2rem, 4vw, 3rem)",
+                  fontWeight: 300,
+                }}
+              >
+                {getText("styles_title", lang === "de" ? "Mein Stil. Euer Look." : "My Style. Your Look.")}
+              </h2>
+              <p
+                className="text-black/60 text-[0.88rem] max-w-2xl mx-auto mt-4"
+                style={{ lineHeight: 1.8, fontWeight: 300 }}
+              >
+                {getText("styles_intro", lang === "de"
+                  ? "Wir jagen keinen Pinterest-Trends hinterher, die in zwei Jahren veraltet sind. Wir jagen dem Gefühl hinterher. Eure Bilder sollen in zehn, zwanzig oder dreißig Jahren noch genau denselben Herzschlag auslösen wie heute."
+                  : "We don't chase Pinterest trends that will be outdated in two years. We chase the feeling. Your images should trigger the exact same heartbeat in ten, twenty or thirty years as they do today.")}
+              </p>
+            </div>
+          </SectionReveal>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {(() => {
+              const StyleIcon1 = getIcon("style1_icon", Sun);
+              const StyleIcon2 = getIcon("style2_icon", Sparkles);
+              const StyleIcon3 = getIcon("style3_icon", Contrast);
+              return [
+                { icon: StyleIcon1, title: getText("style1_title", "True to Life"), text: getText("style1_text", lang === "de" ? "So, wie es wirklich war. Die Farben bleiben natürlich und zeitlos. Das Gras ist grün, der Himmel blau und eure Hauttöne sind genau so, wie sie in echt aussehen." : "Just as it really was. Colors stay natural and timeless. The grass is green, the sky is blue and your skin tones are exactly as they look in real life.") },
+                { icon: StyleIcon2, title: getText("style2_title", "Bright & Airy"), text: getText("style2_text", lang === "de" ? "Lichtdurchflutet, weich und freundlich. Dieser Look zaubert Leichtigkeit in die Bilder. Schatten werden aufgehellt, alles wirkt strahlender und pastelliger. Perfekt für Sommerhochzeiten und helle Locations." : "Flooded with light, soft and friendly. This look adds airiness to the images. Shadows are lifted, everything looks brighter and more pastel. Perfect for summer weddings and bright venues.") },
+                { icon: StyleIcon3, title: getText("style3_title", "Editorial"), text: getText("style3_text", lang === "de" ? "Ein bisschen mehr Drama, bitte. Hier orientieren wir uns an Magazinen und Modefotografie. Der Look ist kontrastreicher, mutiger und spielt bewusst mit Licht und Schatten." : "A little more drama, please. Here we draw inspiration from magazines and fashion photography. The look is more contrasted, bolder and deliberately plays with light and shadow.") },
+              ];
+            })().map((style, i) => (
+              <SectionReveal key={style.title} delay={i * 0.12}>
+                <div className="bg-white border border-black/8 p-8 md:p-10 text-center h-full">
+                  <div className="w-14 h-14 mx-auto mb-6 border border-black/10 flex items-center justify-center">
+                    <style.icon size={22} className="text-black/50" />
+                  </div>
+                  <h3
+                    className="mb-3"
+                    style={{
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: "1.15rem",
+                      fontWeight: 600,
+                      letterSpacing: "0.03em",
+                    }}
+                  >
+                    {style.title}
+                  </h3>
+                  <p
+                    className="text-black/65 text-[0.84rem]"
+                    style={{ lineHeight: 1.75, fontWeight: 300 }}
+                  >
+                    {style.text}
+                  </p>
+                </div>
+              </SectionReveal>
+            ))}
+          </div>
+
+          <SectionReveal delay={0.4}>
+            <p
+              className="text-center text-black/50 text-[0.8rem] mt-10 max-w-lg mx-auto"
+              style={{ lineHeight: 1.7, fontWeight: 300, fontStyle: "italic" }}
+            >
+              {getText("styles_note", lang === "de"
+                ? "Wir stimmen den finalen Look gemeinsam ab. Licht und Wetter machen 90% der Bildstimmung aus \u2013 wir veredeln die echte Atmosphäre, statt die Realität zu verbiegen."
+                : "We decide on the final look together. Light and weather make up 90% of the mood \u2013 we enhance the real atmosphere instead of bending reality.")}
+            </p>
+          </SectionReveal>
+
+          {/* CTA after Styles */}
+          <SectionReveal delay={0.5}>
+            <div className="text-center mt-12">
+              <button
+                onClick={() => openContact("wedding")}
+                className="inline-flex items-center gap-2 text-black border border-black px-8 py-3 text-[0.8rem] tracking-[0.15em] uppercase bg-transparent cursor-pointer hover:bg-black hover:text-white transition-all duration-300"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("styles_cta", lang === "de" ? "Unverbindlich anfragen" : "Inquire now")}
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* Packages */}
+      <section id="packages" className="py-24 md:py-32 px-4">
+        <div className="max-w-7xl mx-auto">
+          <SectionReveal>
+            <h2
+              className="text-center mb-12"
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                fontWeight: 300,
+              }}
+            >
+              {getText("packages_title", t.weddings.packagesTitle)}
+            </h2>
+
+            {/* Tabs */}
+            <div className="flex justify-center gap-4 mb-8">
+              <button
+                onClick={() => setActiveTab("photo")}
+                className={`px-6 py-3 text-[0.8rem] tracking-[0.1em] uppercase transition-all duration-300 cursor-pointer ${
+                  activeTab === "photo"
+                    ? "bg-black text-white border border-black"
+                    : "bg-transparent text-black border border-black/20 hover:border-black"
+                }`}
+                style={{ fontWeight: 400 }}
+              >
+                {getText("packages_photo_tab", t.weddings.photoPackages)}
+              </button>
+              <button
+                onClick={() => setActiveTab("video")}
+                className={`px-6 py-3 text-[0.8rem] tracking-[0.1em] uppercase transition-all duration-300 cursor-pointer ${
+                  activeTab === "video"
+                    ? "bg-black text-white border border-black"
+                    : "bg-transparent text-black border border-black/20 hover:border-black"
+                }`}
+                style={{ fontWeight: 400 }}
+              >
+                {getText("packages_video_tab", t.weddings.videoPackages)}
+              </button>
+            </div>
+
+            <p
+              className="text-center text-black/40 text-[0.8rem] mb-12"
+              style={{ fontWeight: 300 }}
+            >
+              {activeTab === "photo"
+                ? getText("travel_note", t.weddings.travelNote)
+                : getText("travel_note_video", t.weddings.travelNoteVideo)}
+            </p>
+          </SectionReveal>
+
+          {/* Package Cards */}
+          <div
+            className={`grid grid-cols-1 sm:grid-cols-2 ${
+              activeTab === "photo" ? "lg:grid-cols-5" : "lg:grid-cols-3"
+            } gap-6`}
+          >
+            {(activeTab === "photo" ? weddingPhotoPackages : weddingVideoPackages).map(
+              (pkg, i) => (
+                <SectionReveal key={pkg.name} delay={i * 0.1}>
+                  <div
+                    className={`bg-white p-6 md:p-8 border transition-shadow hover:shadow-lg h-full flex flex-col ${
+                      (pkg as any).highlight
+                        ? "border-black"
+                        : "border-black/10"
+                    }`}
+                  >
+                    <p
+                      className="text-[0.7rem] tracking-[0.2em] uppercase text-black/40 mb-3"
+                      style={{ fontWeight: 400 }}
+                    >
+                      {pkg.name}
+                    </p>
+                    <p
+                      className="mb-2"
+                      style={{
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: "2rem",
+                        fontWeight: 600,
+                        lineHeight: 1.1,
+                      }}
+                    >
+                      {pkg.price}
+                    </p>
+                    <p
+                      className="text-black/50 text-[0.8rem] mb-6"
+                      style={{ fontWeight: 300, fontStyle: "italic" }}
+                    >
+                      {pkg.subtitle}
+                    </p>
+                    <div className="flex flex-col gap-3 flex-1">
+                      {(lang === "de" ? pkg.features : pkg.featuresEn).map(
+                        (feature, fi) => (
+                          <div key={fi} className="flex gap-2">
+                            <Check
+                              size={14}
+                              className="text-black/30 mt-1 shrink-0"
+                            />
+                            <span
+                              className="text-black/60 text-[0.8rem]"
+                              style={{ lineHeight: 1.5, fontWeight: 300 }}
+                            >
+                              {feature}
+                            </span>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                </SectionReveal>
+              )
+            )}
+          </div>
+
+          {/* Add-ons (only for photo) */}
+          {activeTab === "photo" && (
+            <SectionReveal>
+              <div className="mt-12 bg-white border border-black/10 p-8 md:p-12 max-w-2xl mx-auto">
+                <p
+                  className="text-[0.7rem] tracking-[0.2em] uppercase text-black/40 mb-3 text-center"
+                  style={{ fontWeight: 400 }}
+                >
+                  {getText("addons_pretitle", t.weddings.addOnsTitle)}
+                </p>
+                <h3
+                  className="text-center mb-8"
+                  style={{
+                    fontFamily: "'Montserrat', sans-serif",
+                    fontSize: "1.8rem",
+                    fontWeight: 400,
+                  }}
+                >
+                  {getText("addons_title", t.weddings.addOnsHeading)}
+                </h3>
+                <div className="flex flex-col gap-3">
+                  {addOns.map((addon, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Check
+                        size={14}
+                        className="text-black/30 mt-1 shrink-0"
+                      />
+                      <span
+                        className="text-black/60 text-[0.85rem]"
+                        style={{ lineHeight: 1.5, fontWeight: 300 }}
+                      >
+                        {addon}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </SectionReveal>
+          )}
+
+          {/* Book CTA */}
+          <SectionReveal>
+            <div className="text-center mt-12">
+              <button
+                onClick={() => openContact("wedding")}
+                className="inline-flex items-center gap-2 text-black border border-black px-10 py-4 text-[0.8rem] tracking-[0.15em] uppercase bg-transparent cursor-pointer hover:bg-black hover:text-white transition-all duration-300"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("book_now", t.weddings.bookNow)}
+                <ArrowRight size={14} />
+              </button>
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* Example Timeline – from Wedding Guide */}
+      <section className="py-24 md:py-32 bg-[#f8f7f5] px-4">
+        <div className="max-w-3xl mx-auto">
+          <SectionReveal>
+            <div className="text-center mb-16">
+              <p
+                className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("timeline_pretitle", lang === "de" ? "BEISPIEL" : "EXAMPLE")}
+              </p>
+              <h2
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: "clamp(2rem, 4vw, 3rem)",
+                  fontWeight: 300,
+                }}
+              >
+                {getText("timeline_title", lang === "de" ? "So kann euer Tag aussehen" : "What your day could look like")}
+              </h2>
+              <p
+                className="text-black/60 text-[0.88rem] max-w-xl mx-auto mt-4"
+                style={{ lineHeight: 1.8, fontWeight: 300 }}
+              >
+                {getText("timeline_intro", lang === "de"
+                  ? "Dieser Ablauf ist ein Orientierungspunkt. Euer Tag ist individuell \u2013 wir passen die Timeline an euer Timing, eure Location und eure Wünsche an."
+                  : "This schedule is a guideline. Your day is unique \u2013 we adapt the timeline to your timing, your venue and your wishes.")}
+              </p>
+            </div>
+          </SectionReveal>
+
+          <div className="relative">
+            {/* Timeline line */}
+            <div className="absolute left-[18px] md:left-[22px] top-0 bottom-0 w-[1px] bg-black/10" />
+
+            {(lang === "de"
+              ? [
+                  { time: "08:00 – 09:30", title: "Getting Ready", text: "Ich bin bei der Braut. Details, Anziehen, die ersten Emotionen. Bräutigam: Solo oder mit Assistent." },
+                  { time: "09:30 – 10:00", title: "First Look & Paar-Portraits", text: "Der große Moment. Danach entspannte Paarfotos, während das Licht noch schön ist." },
+                  { time: "10:00 – 11:00", title: "Kleine Pause", text: "Ihr könnt durchatmen, ich hole mir einen Kaffee. Oder: Gruppenfotos-Vorbereitungen." },
+                  { time: "11:00 – 12:00", title: "Trauung", text: "Ich bin im Ninja-Modus. Alle emotionalen Momente, keine Ablenkung." },
+                  { time: "12:00 – 12:30", title: "Gratulationen & Sektempfang", text: "Spontane Glückwünsche und Gäste-Reaktionen einfangen." },
+                  { time: "12:30 – 14:00", title: "Gruppenfotos & Dinner", text: "Gruppenbilder in max. 15–20 Minuten durch, dann seid ihr bei euren Gästen." },
+                  { time: "14:00 – 16:00", title: "Dinner & Reden", text: "Reden, Reaktionen, die ruhigen Momente zwischen den Gängen. Nicht aufdringlich." },
+                  { time: "16:00 – 17:30", title: "Golden Hour", text: "Ein letztes, entspanntes Shooting im schönen Licht. Oder die Übergänge zur Party." },
+                  { time: "17:30 – 22:00", title: "Party & Tanz", text: "Mittendrin. Direct Flash, Action, Spaß. So lange bis die beste Energie vorbei ist." },
+                ]
+              : [
+                  { time: "08:00 – 09:30", title: "Getting Ready", text: "I'm with the bride. Details, dressing up, the first emotions. Groom: solo or with assistant." },
+                  { time: "09:30 – 10:00", title: "First Look & Portraits", text: "The big moment. Then relaxed couple photos while the light is still beautiful." },
+                  { time: "10:00 – 11:00", title: "Short Break", text: "You can breathe, I'll grab a coffee. Or: group photo preparations." },
+                  { time: "11:00 – 12:00", title: "Ceremony", text: "I'm in ninja mode. All emotional moments, no distractions." },
+                  { time: "12:00 – 12:30", title: "Congratulations & Reception", text: "Capturing spontaneous well-wishes and guest reactions." },
+                  { time: "12:30 – 14:00", title: "Group Photos & Dinner", text: "Group photos done in max. 15–20 minutes, then you're with your guests." },
+                  { time: "14:00 – 16:00", title: "Dinner & Speeches", text: "Speeches, reactions, the quiet moments between courses. Non-intrusive." },
+                  { time: "16:00 – 17:30", title: "Golden Hour", text: "One last relaxed shoot in beautiful light. Or transitions to the party." },
+                  { time: "17:30 – 22:00", title: "Party & Dance", text: "Right in the middle. Direct flash, action, fun. Until the best energy is over." },
+                ]
+            ).map((item, i) => (
+              <SectionReveal key={item.time} delay={i * 0.06}>
+                <div className="flex gap-5 mb-8 relative">
+                  <div className="w-[38px] md:w-[46px] shrink-0 flex items-start justify-center pt-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-black/20 border-2 border-white ring-1 ring-black/10 z-10" />
+                  </div>
+                  <div className="flex-1 pb-2">
+                    <p
+                      className="text-[0.72rem] tracking-[0.15em] uppercase text-black/35 mb-1"
+                      style={{ fontWeight: 400 }}
+                    >
+                      {item.time}
+                    </p>
+                    <h4
+                      className="mb-1"
+                      style={{
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: "1rem",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {item.title}
+                    </h4>
+                    <p
+                      className="text-black/50 text-[0.84rem]"
+                      style={{ lineHeight: 1.7, fontWeight: 300 }}
+                    >
+                      {item.text}
+                    </p>
+                  </div>
+                </div>
+              </SectionReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Wedding Gallery */}
+      <section className="py-24 md:py-32 px-4">
+        <div className="max-w-7xl mx-auto">
+          <SectionReveal>
+            <h2
+              className="text-center mb-6"
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                fontWeight: 300,
+                letterSpacing: "0.1em",
+              }}
+            >
+              {getText("gallery_title", "GET INSPIRED")}
+            </h2>
+          </SectionReveal>
+
+          {/* Fotos / Videos Top-Level Tabs */}
+          <SectionReveal>
+            <div className="flex justify-center gap-4 mb-8">
+              <button
+                onClick={() => setGalleryMode("fotos")}
+                className={`inline-flex items-center gap-2 px-6 py-3 text-[0.8rem] tracking-[0.1em] uppercase transition-all duration-300 cursor-pointer ${
+                  galleryMode === "fotos"
+                    ? "bg-black text-white border border-black"
+                    : "bg-transparent text-black border border-black/20 hover:border-black"
+                }`}
+                style={{ fontWeight: 400 }}
+              >
+                <Camera size={14} />
+                {lang === "de" ? "Fotos" : "Photos"}
+              </button>
+              <button
+                onClick={() => setGalleryMode("videos")}
+                className={`inline-flex items-center gap-2 px-6 py-3 text-[0.8rem] tracking-[0.1em] uppercase transition-all duration-300 cursor-pointer ${
+                  galleryMode === "videos"
+                    ? "bg-black text-white border border-black"
+                    : "bg-transparent text-black border border-black/20 hover:border-black"
+                }`}
+                style={{ fontWeight: 400 }}
+              >
+                <Play size={14} />
+                Videos
+              </button>
+            </div>
+          </SectionReveal>
+
+          {galleryMode === "fotos" ? (
+            <>
+              {/* Subtle Category Filter */}
+              <SectionReveal>
+                <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mb-14">
+                  {galleryCategories.map((category) => (
+                    <button
+                      key={category.key}
+                      onClick={() => handleCategoryChange(category.key)}
+                      className="bg-transparent border-none cursor-pointer px-1 py-2 transition-all duration-300"
+                      style={{
+                        fontFamily: "'Montserrat', sans-serif",
+                        fontSize: "0.78rem",
+                        letterSpacing: "0.12em",
+                        textTransform: "uppercase",
+                        fontWeight: galleryCategory === category.key ? 500 : 300,
+                        color: galleryCategory === category.key ? "black" : "rgba(0,0,0,0.35)",
+                        borderBottom: galleryCategory === category.key ? "1px solid black" : "1px solid transparent",
+                      }}
+                    >
+                      {lang === "de" ? category.label.de : category.label.en}
+                    </button>
+                  ))}
+                </div>
+              </SectionReveal>
+
+              <MasonryGrid
+                images={visibleGallery}
+                openLightbox={openLightbox}
+              />
+
+              {/* Load More Button */}
+              {hasMore && (
+                <div className="text-center mt-8">
+                  <button
+                    onClick={handleLoadMore}
+                    className="inline-flex items-center gap-2 text-black border border-black px-8 py-3 text-[0.8rem] tracking-[0.15em] uppercase bg-transparent cursor-pointer hover:bg-black hover:text-white transition-all duration-300"
+                    style={{ fontWeight: 400 }}
+                  >
+                    {getText("load_more", t.weddings.loadMore)}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* Video Gallery */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+              {[
+                { id: "B5ncNtkQkKs", title: "Wedding Film" },
+                { id: "aD9G344Yt_o", title: "Wedding Film" },
+                { id: "OskCUn4h2cU", title: "Wedding Film" },
+                { id: "87Ryj3JSUJc", title: "Wedding Film" },
+                { id: "EOk9GpvVlRk", title: "Wedding Film" },
+                { id: "5QN0bcnPFFY", title: "Wedding Film" },
+              ].map((video, i) => (
+                <SectionReveal key={video.id} delay={i * 0.08}>
+                  <div className="relative w-full overflow-hidden bg-black" style={{ aspectRatio: "16/9" }}>
+                    <iframe
+                      src={`https://www.youtube-nocookie.com/embed/${video.id}?rel=0&modestbranding=1`}
+                      title={`${video.title} ${i + 1}`}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                      allowFullScreen
+                      loading="lazy"
+                      className="absolute inset-0 w-full h-full border-0"
+                    />
+                  </div>
+                </SectionReveal>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Wedding Testimonials */}
+      <GoogleReviewsGrid
+        count={3}
+        title={getText("testimonials_title", lang === "de" ? "Das sagen meine Paare" : "What my couples say")}
+      />
+
+      {/* Wedding FAQ */}
+      <FAQSection
+        categories={getFAQsByCategories(PAGE_FAQ_CATEGORIES.weddings)}
+        title={{ de: "Häufige Fragen zur Hochzeitsfotografie", en: "Wedding Photography FAQ" }}
+      />
+
+      {/* Booking Process – from Wedding Guide */}
+      <section className="py-24 md:py-32 px-4">
+        <div className="max-w-4xl mx-auto">
+          <SectionReveal>
+            <div className="text-center mb-16">
+              <p
+                className="text-[0.75rem] tracking-[0.3em] uppercase text-black/55 mb-4"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("process_pretitle", lang === "de" ? "PROZESS" : "PROCESS")}
+              </p>
+              <h2
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: "clamp(2rem, 4vw, 3rem)",
+                  fontWeight: 300,
+                }}
+              >
+                {getText("process_title", lang === "de" ? "So geht\u2019s los" : "How it works")}
+              </h2>
+            </div>
+          </SectionReveal>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            {(() => {
+              const P1 = getIcon("process1_icon", MessageCircle);
+              const P2 = getIcon("process2_icon", Smartphone);
+              const P3 = getIcon("process3_icon", FileText);
+              const P4 = getIcon("process4_icon", CalendarCheck);
+              const P5 = getIcon("process5_icon", Camera);
+              const P6 = getIcon("process6_icon", Gift);
+              return [
+                { icon: P1, step: "01", title: getText("process1_title", lang === "de" ? "Anfrage" : "Inquiry"), text: getText("process1_text", lang === "de" ? "Füllt das Kontaktformular aus und erzählt mir von euch. Je mehr Infos, desto besser kann ich euch eine erste Kosteneinschätzung geben." : "Fill out the contact form and tell me about yourselves. The more info, the better I can give you an initial estimate.") },
+                { icon: P2, step: "02", title: getText("process2_title", lang === "de" ? "Vibe Check" : "Vibe Check"), text: getText("process2_text", lang === "de" ? "Wir machen einen Video- oder Telefonanruf und lernen uns besser kennen. Wir sehen, ob die Chemie stimmt \u2013 denn das ist am Ende das Wichtigste." : "We do a video or phone call and get to know each other. We'll see if the chemistry is right \u2013 because that's what matters most.") },
+                { icon: P3, step: "03", title: getText("process3_title", lang === "de" ? "Buchung & Vertrag" : "Booking & Contract"), text: getText("process3_text", lang === "de" ? "Wenn alles passt, bekommt ihr einen Vertrag. 25% Anzahlung sichert euren Termin. Der Restbetrag ist 2 Wochen nach der Hochzeit fällig." : "If everything fits, you'll get a contract. 25% deposit secures your date. The balance is due 2 weeks after the wedding.") },
+                { icon: P4, step: "04", title: getText("process4_title", lang === "de" ? "Catch-Up" : "Catch-Up"), text: getText("process4_text", lang === "de" ? "4\u20136 Wochen vor der Hochzeit setzen wir uns zusammen und gehen den Ablaufplan durch. Der perfekte Moment für besondere Wünsche." : "4\u20136 weeks before the wedding we sit down and go through the schedule. The perfect moment for special requests.") },
+                { icon: P5, step: "05", title: getText("process5_title", lang === "de" ? "Euer großer Tag" : "Your Big Day"), text: getText("process5_text", lang === "de" ? "Euer Tag ist da! Ich begleite eure Hochzeit so lange wie besprochen und fange all die wunderschönen Momente für immer ein." : "Your day is here! I'll accompany your wedding as long as discussed and capture all those beautiful moments forever.") },
+                { icon: P6, step: "06", title: getText("process6_title", lang === "de" ? "Bildübergabe" : "Image Delivery"), text: getText("process6_text", lang === "de" ? "Nach 72h bekommt ihr die ersten Sneak Peeks. Die vollständige Galerie folgt innerhalb von 6\u20138 Wochen \u2013 handbearbeitet in eurem gewählten Stil." : "After 72h you get the first sneak peeks. The complete gallery follows within 6\u20138 weeks \u2013 hand-edited in your chosen style.") },
+              ];
+            })().map((item, i) => (
+              <SectionReveal key={item.step} delay={i * 0.08}>
+                <div className="text-center">
+                  <div className="w-14 h-14 mx-auto mb-5 border border-black/10 flex items-center justify-center">
+                    <item.icon size={22} className="text-black/50" />
+                  </div>
+                  <p
+                    className="text-[0.7rem] tracking-[0.25em] text-black/40 mb-2"
+                    style={{ fontWeight: 400 }}
+                  >
+                    {item.step}
+                  </p>
+                  <h3
+                    className="mb-2"
+                    style={{
+                      fontFamily: "'Montserrat', sans-serif",
+                      fontSize: "1.05rem",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {item.title}
+                  </h3>
+                  <p
+                    className="text-black/65 text-[0.84rem]"
+                    style={{ lineHeight: 1.7, fontWeight: 300 }}
+                  >
+                    {item.text}
+                  </p>
+                </div>
+              </SectionReveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Wedding Guide Download CTA */}
+      <section className="py-20 md:py-28 bg-[#f8f7f5] px-4">
+        <div className="max-w-3xl mx-auto">
+          <SectionReveal>
+            <div className="relative border border-black/10 bg-white p-8 sm:p-12 md:p-16 text-center overflow-hidden">
+              {/* Decorative corner accents */}
+              <div className="absolute top-4 left-4 w-8 h-8 border-t border-l border-black/15" />
+              <div className="absolute top-4 right-4 w-8 h-8 border-t border-r border-black/15" />
+              <div className="absolute bottom-4 left-4 w-8 h-8 border-b border-l border-black/15" />
+              <div className="absolute bottom-4 right-4 w-8 h-8 border-b border-r border-black/15" />
+
+              <p
+                className="text-[0.7rem] tracking-[0.35em] uppercase text-black/50 mb-4"
+                style={{ fontWeight: 400 }}
+              >
+                {getText("guide_pretitle", lang === "de" ? "Kostenloser Download" : "Free Download")}
+              </p>
+              <h2
+                style={{
+                  fontFamily: "'Montserrat', sans-serif",
+                  fontSize: "clamp(1.6rem, 3.5vw, 2.5rem)",
+                  fontWeight: 300,
+                  lineHeight: 1.15,
+                  marginBottom: "1rem",
+                }}
+              >
+                {getText("guide_title", "Wedding Guide")}
+              </h2>
+              <p
+                className="text-black/50 text-[0.82rem] mb-2"
+                style={{ fontWeight: 300, fontStyle: "italic" }}
+              >
+                {getText("guide_season", lang === "de" ? "Saison 2026/27" : "Season 2026/27")}
+              </p>
+              <p
+                className="text-black/65 text-[0.88rem] max-w-md mx-auto mb-10"
+                style={{ lineHeight: 1.75, fontWeight: 300 }}
+              >
+                {getText("guide_text", lang === "de"
+                  ? "Alle Infos zu meinen Paketen, meinem Stil und wertvolle Tipps für eure Hochzeitsplanung \u2013 kompakt zusammengefasst."
+                  : "All the info about my packages, my style and valuable tips for your wedding planning \u2013 in one compact guide.")}
+              </p>
+              <a
+                href={getAsset("guide_pdf", "https://ik.imagekit.io/r2yqrg6np/WeddingGuide_MarioSchubert_Saison26_27_compressed.pdf?updatedAt=1773007904883")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-3 bg-black text-white px-10 py-4 text-[0.8rem] tracking-[0.15em] uppercase no-underline hover:bg-black/80 transition-all duration-300"
+                style={{ fontWeight: 400 }}
+              >
+                <Download size={16} />
+                {getText("guide_button", lang === "de" ? "Guide herunterladen" : "Download Guide")}
+              </a>
+              <p
+                className="text-black/40 text-[0.72rem] mt-6"
+                style={{ fontWeight: 300 }}
+              >
+                PDF · {getText("guide_note", lang === "de" ? "Kostenlos & unverbindlich" : "Free & no strings attached")}
+              </p>
+            </div>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section className="py-24 md:py-32 bg-black text-white">
+        <div className="max-w-3xl mx-auto text-center px-4">
+          <SectionReveal>
+            <h2
+              style={{
+                fontFamily: "'Montserrat', sans-serif",
+                fontSize: "clamp(2rem, 5vw, 3.5rem)",
+                fontWeight: 300,
+                lineHeight: 1.1,
+                marginBottom: "1.5rem",
+              }}
+            >
+              {getText("cta_title", t.weddings.ctaTitle)}
+            </h2>
+            <p
+              className="text-white/65 text-[0.9rem] mb-10"
+              style={{ lineHeight: 1.8, fontWeight: 300 }}
+            >
+              {getText("cta_text", t.weddings.ctaText)}
+            </p>
+            <button
+              onClick={() => openContact("wedding")}
+              className="inline-flex items-center gap-2 text-white border border-white/40 px-8 py-3 text-[0.8rem] tracking-[0.15em] uppercase bg-transparent cursor-pointer hover:bg-white hover:text-black transition-all duration-300"
+              style={{ fontWeight: 400 }}
+            >
+              {getText("cta_button", t.weddings.ctaButton)}
+              <ArrowRight size={14} />
+            </button>
+          </SectionReveal>
+        </div>
+      </section>
+
+      {/* Lightbox */}
+      <Lightbox
+        images={filteredGallery}
+        initialIndex={index}
+        open={open}
+        onClose={closeLightbox}
+      />
+    </>
+  );
+}
