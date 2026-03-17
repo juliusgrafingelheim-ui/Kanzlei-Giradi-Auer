@@ -39,6 +39,7 @@ export async function getStory<T = any>(
   try {
     const { data } = await storyblokApi!.get(`cdn/stories/${slug}`, {
       version: import.meta.env.DEV ? "draft" : "published",
+      cv: Date.now(), // Cache buster - forces fresh content
       ...params,
     });
     return data.story;
@@ -55,6 +56,7 @@ export async function getStories<T = any>(
   try {
     const { data } = await storyblokApi!.get("cdn/stories", {
       version: import.meta.env.DEV ? "draft" : "published",
+      cv: Date.now(), // Cache buster - forces fresh content
       ...params,
     });
     return data.stories;
