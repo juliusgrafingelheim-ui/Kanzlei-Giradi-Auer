@@ -169,26 +169,26 @@ export async function getStory<T = any>(
 
   const baseParams = { cv: Date.now(), ...params };
 
-  // In the Visual Editor, try "draft" first
-  if (isStoryblokEditor) {
-    try {
-      const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
-        version: "draft",
-        ...baseParams,
-      });
-      if (data?.story) {
-        console.info(`[Storyblok] Fetched "${slug}" (draft)`);
-        return data.story;
-      }
-    } catch (draftError: any) {
-      // Draft failed (likely 401 with public token) – fall through to published
-      console.info(
-        `[Storyblok] Draft fetch failed for "${slug}" (${draftError?.status || "unknown"}) – trying published...`
-      );
+  // Always try "draft" first since we use a Preview token.
+  // This ensures unpublished content (e.g. newly uploaded images) is visible.
+  // If draft fails (e.g. public token → 401), fall back to "published".
+  try {
+    const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
+      version: "draft",
+      ...baseParams,
+    });
+    if (data?.story) {
+      console.info(`[Storyblok] Fetched "${slug}" (draft)`);
+      return data.story;
     }
+  } catch (draftError: any) {
+    // Draft failed – fall through to published
+    console.info(
+      `[Storyblok] Draft fetch failed for "${slug}" (${draftError?.status || "unknown"}) – trying published...`
+    );
   }
 
-  // Default: fetch published version
+  // Fallback: fetch published version
   try {
     const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
       version: "published",
