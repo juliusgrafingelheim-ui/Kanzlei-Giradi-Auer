@@ -178,6 +178,24 @@ export async function getStory<T = any>(
     });
     if (data?.story) {
       console.info(`[Storyblok] Fetched "${slug}" (draft)`);
+      // DEBUG: Log image-related fields from story content
+      if (data.story.content) {
+        const c = data.story.content;
+        const keys = Object.keys(c);
+        const imageKeys = keys.filter(k => k.includes('image') || k.includes('foto') || k.includes('photo'));
+        console.info(`[Storyblok] "${slug}" has ${keys.length} fields. Image fields:`, imageKeys);
+        imageKeys.forEach((k: string) => {
+          console.info(`[Storyblok] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 300));
+        });
+        // Log member_1 fields specifically
+        const m1Keys = keys.filter(k => k.startsWith('member_1'));
+        if (m1Keys.length > 0) {
+          console.info(`[Storyblok] member_1 fields:`, m1Keys);
+          m1Keys.forEach((k: string) => {
+            console.info(`[Storyblok] ${k}:`, typeof c[k], JSON.stringify(c[k])?.substring(0, 300));
+          });
+        }
+      }
       return data.story;
     }
   } catch (draftError: any) {
