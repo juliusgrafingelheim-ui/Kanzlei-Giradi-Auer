@@ -6,4 +6,4 @@ Disallow: /admin
 Disallow: /api/
 
 # Sitemap
-Sitemap: https://marioschub.com/sitemap.xml
+Sitemap: https://www.girardi-auer.com/sitemap.xml

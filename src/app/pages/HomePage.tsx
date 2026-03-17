@@ -145,7 +145,7 @@ export function HomePage() {
           <div className="lg:hidden absolute inset-0 bg-gradient-to-br from-[#1a365d] via-slate-900 to-slate-950"></div>
           <div className="hidden lg:block absolute inset-y-0 right-0 w-[45%] bg-gradient-to-br from-slate-50 via-white to-slate-100"></div>
         </div>
-        <div className="absolute top-0 left-[40%] w-[500px] h-[500px] bg-[#1a365d]/10 rounded-full blur-[128px]"></div>
+        <div className="absolute top-0 left-[40%] w-[500px] h-[500px] bg-[#1a365d]/10 rounded-full blur-[128px] pointer-events-none"></div>
 
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32 w-full">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
@@ -236,9 +236,9 @@ export function HomePage() {
       </section>
 
       {/* Trust Bar */}
-      <section className="py-5 bg-[#1a365d] border-t border-white/5">
+      <section className="py-5 bg-[#1a365d] border-t border-white/5 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-3 text-white/80 text-sm">
+          <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center sm:justify-center gap-x-10 gap-y-3 text-white/80 text-sm">
             {[
               pageContent.trustbar_1 || "Unverbindliches Erstgespräch",
               pageContent.trustbar_2 || "35+ Jahre Erfahrung",
