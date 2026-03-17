@@ -1,46 +1,35 @@
 /**
  * Icon Map: Storyblok text field value → Lucide React component
  *
- * In Storyblok, create a "Text" field (or single-option) with the icon name.
- * Mario can type e.g. "Heart", "Camera", "Film" and the correct Lucide icon renders.
+ * In Storyblok, create a "Text" field with the icon name.
+ * Type e.g. "Scale", "Home", "Users" and the correct Lucide icon renders.
  *
  * Only icons actually used across the site are included to keep the bundle small.
- * Add more as needed.
  */
 
 import type { LucideIcon } from "lucide-react";
 import {
   ArrowRight,
   Award,
-  Baby,
-  Cake,
+  Building,
   Calendar,
-  CalendarCheck,
-  Camera,
-  CameraIcon,
   Check,
   Clock,
-  Contrast,
-  Download,
+  FileCheck,
   FileText,
-  Film,
-  Gift,
   Heart,
-  Leaf,
+  HeartHandshake,
+  Home,
   Mail,
   MapPin,
-  MessageCircle,
-  Music,
-  Palette,
-  PartyPopper,
   Phone,
-  Play,
-  Smartphone,
-  Sparkles,
+  Scale,
+  Search,
+  Shield,
   Star,
-  Sun,
+  Target,
+  TrendingUp,
   Users,
-  Video,
 } from "lucide-react";
 
 export type IconComponent = LucideIcon;
@@ -52,35 +41,25 @@ export type IconComponent = LucideIcon;
 export const ICON_MAP: Record<string, LucideIcon> = {
   ArrowRight,
   Award,
-  Baby,
-  Cake,
+  Building,
   Calendar,
-  CalendarCheck,
-  Camera,
-  CameraIcon,
   Check,
   Clock,
-  Contrast,
-  Download,
+  FileCheck,
   FileText,
-  Film,
-  Gift,
   Heart,
-  Leaf,
+  HeartHandshake,
+  Home,
   Mail,
   MapPin,
-  MessageCircle,
-  Music,
-  Palette,
-  PartyPopper,
   Phone,
-  Play,
-  Smartphone,
-  Sparkles,
+  Scale,
+  Search,
+  Shield,
   Star,
-  Sun,
+  Target,
+  TrendingUp,
   Users,
-  Video,
 };
 
 /**

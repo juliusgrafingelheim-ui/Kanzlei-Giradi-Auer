@@ -2,21 +2,34 @@ import StoryblokClient from "storyblok-js-client";
 
 // Get the token
 const token = import.meta.env.VITE_STORYBLOK_TOKEN || "";
-console.log('[Storyblok Init] Token available:', token ? `${token.substring(0, 10)}...` : 'NO TOKEN FOUND');
-console.log('[Storyblok Init] Full token (for debug):', token); // TEMPORARY DEBUG
+
+// Determine content version:
+// - "draft" requires a preview/private token
+// - "published" works with public tokens
+// - Use "draft" only in dev mode OR when inside Storyblok Visual Editor
+const isStoryblokEditor =
+  typeof window !== "undefined" &&
+  window.location.search.includes("_storyblok");
+const contentVersion: "draft" | "published" =
+  import.meta.env.DEV || isStoryblokEditor ? "draft" : "published";
 
 // Create API client directly
-const storyblokApi = token ? new StoryblokClient({
-  accessToken: token,
-  region: "eu",
-  cache: {
-    clear: 'auto',
-    type: 'memory'
-  }
-}) : null;
+const storyblokApi = token
+  ? new StoryblokClient({
+      accessToken: token,
+      region: "eu",
+      cache: {
+        clear: "auto",
+        type: "memory",
+      },
+    })
+  : null;
 
-console.log('[Storyblok Init] API client created:', !!storyblokApi);
-console.log('[Storyblok Init] Environment:', import.meta.env.DEV ? 'development' : 'production');
+if (!token) {
+  console.info("[Storyblok] No token found. Using fallback data.");
+} else {
+  console.info(`[Storyblok] Initialized (version: ${contentVersion})`);
+}
 
 export { storyblokApi };
 
@@ -46,26 +59,27 @@ export async function getStory<T = any>(
   params?: any
 ): Promise<StoryblokStory<T> | null> {
   if (!storyblokApi) {
-    console.error(
-      'Storyblok API not initialized. Check if VITE_STORYBLOK_TOKEN is set.'
+    console.warn(
+      "[Storyblok] API not initialized. Check VITE_STORYBLOK_TOKEN."
     );
     return null;
   }
 
   try {
-    console.log(`[Storyblok] Fetching story: ${slug}`);
-    console.log(`[Storyblok] Version: draft (TESTING)`);
-    
     const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
-      version: "draft", // TEMPORARY: Always use draft for testing
-      cv: Date.now(), // Cache buster - forces fresh content
+      version: contentVersion,
+      cv: Date.now(), // Cache buster
       ...params,
     });
-    
-    console.log(`[Storyblok] Story fetched successfully:`, slug, data.story);
+
     return data.story;
-  } catch (error) {
-    console.error(`Error fetching story ${slug}:`, error);
+  } catch (error: any) {
+    // Only log real errors, not 404s (story not created yet)
+    if (error?.status === 404) {
+      console.info(`[Storyblok] Story "${slug}" not found – using fallback.`);
+    } else {
+      console.error(`[Storyblok] Error fetching "${slug}":`, error?.message || error);
+    }
     return null;
   }
 }
@@ -75,19 +89,19 @@ export async function getStories<T = any>(
   params?: any
 ): Promise<StoryblokStory<T>[]> {
   if (!storyblokApi) {
-    console.error('Storyblok API not initialized. Check if VITE_STORYBLOK_TOKEN is set.');
+    console.warn("[Storyblok] API not initialized.");
     return [];
   }
-  
+
   try {
     const { data } = await storyblokApi.get("cdn/stories", {
-      version: import.meta.env.DEV ? "draft" : "published",
-      cv: Date.now(), // Cache buster - forces fresh content
+      version: contentVersion,
+      cv: Date.now(),
       ...params,
     });
     return data.stories;
-  } catch (error) {
-    console.error("Error fetching stories:", error);
+  } catch (error: any) {
+    console.error("[Storyblok] Error fetching stories:", error?.message || error);
     return [];
   }
 }

@@ -15,7 +15,7 @@
  */
 
 const CONFIG = {
-  API_TOKEN: 'WLWKP9ZfraLjyPlsjFTkyQtt',
+  API_TOKEN: 'WLWKP9ZfraLjyPlsjFTkyQtt', // MANAGEMENT TOKEN - hat Schreibrechte!
   SPACE_ID: '',
   API_BASE: 'https://mapi.storyblok.com/v1',
   RETRY_ATTEMPTS: 3,
@@ -244,6 +244,7 @@ function getHomePageSchema() {
     hero_subtitle: { type: 'textarea', default_value: 'Seit 1989 vertreten wir Ihre Interessen mit Kompetenz, Erfahrung und persönlichem Engagement. Vertrauen Sie auf unsere Expertise in allen Rechtsfragen.' },
     hero_cta_text: { type: 'text', default_value: 'Beratungstermin vereinbaren' },
     hero_cta_link: { type: 'text', default_value: '/kontakt' },
+    hero_image: { type: 'asset', filetypes: ['images'] },
     
     // Stats
     stat_1_number: { type: 'text', default_value: '35+' },
@@ -276,6 +277,8 @@ function getHomePageSchema() {
     // Team Section
     team_section_title: { type: 'text', default_value: 'Unser Team' },
     team_section_subtitle: { type: 'text', default_value: 'Erfahrene Rechtsanwälte mit Engagement und Fachkompetenz' },
+    team_image_1: { type: 'asset', filetypes: ['images'] },
+    team_image_2: { type: 'asset', filetypes: ['images'] },
     
     // Why Section
     why_title: { type: 'text', default_value: 'Warum Girardi & Auer?' },
@@ -298,6 +301,7 @@ function getHomePageSchema() {
     location_subtitle: { type: 'textarea', default_value: 'Vereinbaren Sie noch heute einen Termin für ein unverbindliches Erstgespräch.' },
     location_cta_text: { type: 'text', default_value: 'Jetzt Kontakt aufnehmen' },
     location_cta_link: { type: 'text', default_value: '/kontakt' },
+    location_image: { type: 'asset', filetypes: ['images'] },
     
     // SEO
     seo_title: { type: 'text', default_value: 'Rechtsanwalt Innsbruck | Girardi & Auer | Seit 1989' },
@@ -368,12 +372,9 @@ function getAboutPageSchema() {
 function getPracticeAreasPageSchema() {
   return {
     // Hero
-    hero_title: { type: 'text', default_value: 'Unsere Rechtsgebiete' },
-    hero_subtitle: { type: 'textarea', default_value: 'Umfassende Beratung und Vertretung in allen relevanten Rechtsbereichen' },
-    
-    // Info
-    info_title: { type: 'text', default_value: 'Spezialisierte Rechtsberatung' },
-    info_text: { type: 'textarea', default_value: 'Unsere Kanzlei bietet Ihnen kompetente Beratung und Vertretung in neun verschiedenen Rechtsgebieten. Mit langjähriger Erfahrung und fundierter Ausbildung stehen wir Ihnen in allen rechtlichen Belangen zur Seite.' },
+    hero_badge: { type: 'text', default_value: 'Unsere Expertise' },
+    hero_title: { type: 'text', default_value: 'Tätigkeitsbereiche' },
+    hero_subtitle: { type: 'textarea', default_value: 'Die Rechtsanwaltskanzlei „Girardi & Auer" betreut klein- und mittelständische Unternehmen sowie Privatpersonen vor allem in folgenden Rechtsgebieten:' },
     
     // Practice Areas (9 Rechtsgebiete)
     area_1_title: { type: 'text', default_value: 'Liegenschaftsrecht' },
@@ -408,31 +409,39 @@ function getPracticeAreasPageSchema() {
     area_8_desc: { type: 'textarea', default_value: 'Professionelle Durchsetzung Ihrer Ansprüche' },
     area_8_icon: { type: 'text', default_value: 'TrendingUp' },
     
-    area_9_title: { type: 'text', default_value: 'Sonstige Vertretungen' },
-    area_9_desc: { type: 'textarea', default_value: 'Außergerichtliche und gerichtliche Vertretung in Zivil- und Strafverfahren' },
-    area_9_icon: { type: 'text', default_value: 'Scale' },
+    area_9_title: { type: 'text', default_value: 'Rechtsgutachten' },
+    area_9_desc: { type: 'textarea', default_value: 'Fundierte rechtliche Bewertungen und Einschätzungen' },
+    area_9_icon: { type: 'text', default_value: 'Search' },
     
-    // Why Section
-    why_title: { type: 'text', default_value: 'Warum Girardi & Auer?' },
-    why_subtitle: { type: 'text', default_value: 'Ihre Vorteile bei uns' },
+    // Additional Info
+    info_title: { type: 'text', default_value: 'Umfassende rechtliche Beratung' },
+    info_para_1: { type: 'textarea', default_value: 'Unsere langjährige Erfahrung und fundierte Ausbildung ermöglichen es uns, auch komplexe rechtliche Sachverhalte kompetent und zuverlässig zu bearbeiten. Wir vertreten Ihre Interessen sowohl außergerichtlich als auch vor Gericht.' },
+    info_para_2: { type: 'textarea', default_value: 'Sollten Sie Fragen zu einem Rechtsgebiet haben, das hier nicht aufgeführt ist, kontaktieren Sie uns gerne. Wir beraten Sie umfassend oder vermitteln Ihnen bei Bedarf qualifizierte Kollegen aus unserem Netzwerk.' },
+    info_cta_text: { type: 'text', default_value: 'Beratungstermin vereinbaren' },
+    info_cta_link: { type: 'text', default_value: '/kontakt' },
     
-    why_1_title: { type: 'text', default_value: 'Breites Spektrum' },
-    why_1_desc: { type: 'textarea', default_value: 'Neun Rechtsgebiete unter einem Dach – kompetente Beratung aus einer Hand' },
+    // Partner Section
+    partner_title: { type: 'text', default_value: 'Ihr verlässlicher Partner' },
+    partner_subtitle: { type: 'text', default_value: 'Was Sie von unserer Kanzlei erwarten können' },
     
-    why_2_title: { type: 'text', default_value: 'Persönliche Betreuung' },
-    why_2_desc: { type: 'textarea', default_value: 'Individuelle Lösungen für Ihre rechtlichen Anliegen' },
+    partner_1_title: { type: 'text', default_value: 'Fundierte Expertise' },
+    partner_1_desc: { type: 'textarea', default_value: 'Profundes rechtliches Fachwissen in allen relevanten Bereichen des Zivil- und Wirtschaftsrechts.' },
+    partner_1_icon: { type: 'text', default_value: 'FileCheck' },
     
-    why_3_title: { type: 'text', default_value: 'Langjährige Erfahrung' },
-    why_3_desc: { type: 'textarea', default_value: 'Über 35 Jahre Expertise in der Rechtsberatung' },
+    partner_2_title: { type: 'text', default_value: 'Individuelle Betreuung' },
+    partner_2_desc: { type: 'textarea', default_value: 'Persönlicher Ansprechpartner und maßgeschneiderte Lösungen für Ihre spezifische Situation.' },
+    partner_2_icon: { type: 'text', default_value: 'Users' },
     
-    // CTA
-    cta_text: { type: 'text', default_value: 'Jetzt Beratungstermin vereinbaren' },
-    cta_link: { type: 'text', default_value: '/kontakt' },
+    partner_3_title: { type: 'text', default_value: 'Engagierte Vertretung' },
+    partner_3_desc: { type: 'textarea', default_value: 'Leidenschaftlicher Einsatz für Ihre Rechte – außergerichtlich und vor Gericht.' },
+    partner_3_icon: { type: 'text', default_value: 'Scale' },
+    
+    bookshelf_image: { type: 'asset', filetypes: ['images'] },
     
     // SEO
-    seo_title: { type: 'text', default_value: 'Rechtsgebiete - Umfassende Beratung | Girardi & Auer Innsbruck' },
-    seo_description: { type: 'textarea', default_value: 'Unsere Rechtsgebiete: Liegenschaftsrecht, Vergaberecht, Familienrecht, Erbrecht, Unternehmensrecht & mehr. Kompetente Beratung in Innsbruck seit 1989.' },
-    seo_keywords: { type: 'text', default_value: 'Rechtsgebiete Innsbruck, Liegenschaftsrecht, Familienrecht, Erbrecht' }
+    seo_title: { type: 'text', default_value: 'Rechtsgebiete - Liegenschaftsrecht, Familienrecht & mehr | Girardi & Auer' },
+    seo_description: { type: 'textarea', default_value: '9 Rechtsgebiete mit Expertise: Liegenschaftsrecht, Baurecht, Familienrecht, Erbrecht, Unternehmensrecht, Schadenersatz & mehr. ✓ Erfahrene Anwälte in Innsbruck' },
+    seo_keywords: { type: 'text', default_value: 'Liegenschaftsrecht Innsbruck, Familienrecht Tirol, Erbrecht, Baurecht, Unternehmensrecht, Schadenersatzrecht' }
   };
 }
 
@@ -596,6 +605,7 @@ function main() {
       hero_subtitle: 'Seit 1989 vertreten wir Ihre Interessen mit Kompetenz, Erfahrung und persönlichem Engagement. Vertrauen Sie auf unsere Expertise in allen Rechtsfragen.',
       hero_cta_text: 'Beratungstermin vereinbaren',
       hero_cta_link: '/kontakt',
+      hero_image: 'https://example.com/hero-image.jpg',
       stat_1_number: '35+',
       stat_1_label: 'Jahre Erfahrung',
       stat_2_number: '9',
@@ -618,6 +628,8 @@ function main() {
       feature_4_icon: 'Building',
       team_section_title: 'Unser Team',
       team_section_subtitle: 'Erfahrene Rechtsanwälte mit Engagement und Fachkompetenz',
+      team_image_1: 'https://example.com/team-image-1.jpg',
+      team_image_2: 'https://example.com/team-image-2.jpg',
       why_title: 'Warum Girardi & Auer?',
       why_1_title: 'Langjährige Erfahrung',
       why_1_desc: 'Seit 1989 betreuen wir erfolgreich Privatpersonen und Unternehmen in Tirol und darüber hinaus.',
@@ -633,6 +645,7 @@ function main() {
       location_subtitle: 'Vereinbaren Sie noch heute einen Termin für ein unverbindliches Erstgespräch.',
       location_cta_text: 'Jetzt Kontakt aufnehmen',
       location_cta_link: '/kontakt',
+      location_image: 'https://example.com/location-image.jpg',
       seo_title: 'Rechtsanwalt Innsbruck | Girardi & Auer | Seit 1989',
       seo_description: 'Erfahrene Rechtsanwälte in Innsbruck seit 1989. Spezialisiert auf Liegenschaftsrecht, Baurecht, Vertragsrecht & mehr. ✓ Persönliche Betreuung ✓ Jetzt Termin vereinbaren!',
       seo_keywords: 'Rechtsanwalt Innsbruck, Anwalt Tirol, Rechtsberatung Innsbruck'
@@ -681,12 +694,11 @@ function main() {
     });
     
     // Practice Areas - All 9 areas
-    createStory('Rechtsgebiete', 'rechtsgebiete', {
+    createStory('Practice Areas', 'practice-areas', {
       component: 'page_practice_areas',
-      hero_title: 'Unsere Rechtsgebiete',
-      hero_subtitle: 'Umfassende Beratung und Vertretung in allen relevanten Rechtsbereichen',
-      info_title: 'Spezialisierte Rechtsberatung',
-      info_text: 'Unsere Kanzlei bietet Ihnen kompetente Beratung und Vertretung in neun verschiedenen Rechtsgebieten. Mit langjähriger Erfahrung und fundierter Ausbildung stehen wir Ihnen in allen rechtlichen Belangen zur Seite.',
+      hero_badge: 'Unsere Expertise',
+      hero_title: 'Tätigkeitsbereiche',
+      hero_subtitle: 'Die Rechtsanwaltskanzlei „Girardi & Auer" betreut klein- und mittelständische Unternehmen sowie Privatpersonen vor allem in folgenden Rechtsgebieten:',
       area_1_title: 'Liegenschaftsrecht',
       area_1_desc: 'Insbesondere Baurecht sowie Kauf-, Übergabe-, Bauträger- und Mietverträge',
       area_1_icon: 'Home',
@@ -711,22 +723,29 @@ function main() {
       area_8_title: 'Inkassowesen und Forderungsbetreibung',
       area_8_desc: 'Professionelle Durchsetzung Ihrer Ansprüche',
       area_8_icon: 'TrendingUp',
-      area_9_title: 'Sonstige Vertretungen',
-      area_9_desc: 'Außergerichtliche und gerichtliche Vertretung in Zivil- und Strafverfahren',
-      area_9_icon: 'Scale',
-      why_title: 'Warum Girardi & Auer?',
-      why_subtitle: 'Ihre Vorteile bei uns',
-      why_1_title: 'Breites Spektrum',
-      why_1_desc: 'Neun Rechtsgebiete unter einem Dach – kompetente Beratung aus einer Hand',
-      why_2_title: 'Persönliche Betreuung',
-      why_2_desc: 'Individuelle Lösungen für Ihre rechtlichen Anliegen',
-      why_3_title: 'Langjährige Erfahrung',
-      why_3_desc: 'Über 35 Jahre Expertise in der Rechtsberatung',
-      cta_text: 'Jetzt Beratungstermin vereinbaren',
-      cta_link: '/kontakt',
-      seo_title: 'Rechtsgebiete - Umfassende Beratung | Girardi & Auer Innsbruck',
-      seo_description: 'Unsere Rechtsgebiete: Liegenschaftsrecht, Vergaberecht, Familienrecht, Erbrecht, Unternehmensrecht & mehr. Kompetente Beratung in Innsbruck seit 1989.',
-      seo_keywords: 'Rechtsgebiete Innsbruck, Liegenschaftsrecht, Familienrecht, Erbrecht'
+      area_9_title: 'Rechtsgutachten',
+      area_9_desc: 'Fundierte rechtliche Bewertungen und Einschätzungen',
+      area_9_icon: 'Search',
+      info_title: 'Umfassende rechtliche Beratung',
+      info_para_1: 'Unsere langjährige Erfahrung und fundierte Ausbildung ermöglichen es uns, auch komplexe rechtliche Sachverhalte kompetent und zuverlässig zu bearbeiten. Wir vertreten Ihre Interessen sowohl außergerichtlich als auch vor Gericht.',
+      info_para_2: 'Sollten Sie Fragen zu einem Rechtsgebiet haben, das hier nicht aufgeführt ist, kontaktieren Sie uns gerne. Wir beraten Sie umfassend oder vermitteln Ihnen bei Bedarf qualifizierte Kollegen aus unserem Netzwerk.',
+      info_cta_text: 'Beratungstermin vereinbaren',
+      info_cta_link: '/kontakt',
+      partner_title: 'Ihr verlässlicher Partner',
+      partner_subtitle: 'Was Sie von unserer Kanzlei erwarten können',
+      partner_1_title: 'Fundierte Expertise',
+      partner_1_desc: 'Profundes rechtliches Fachwissen in allen relevanten Bereichen des Zivil- und Wirtschaftsrechts.',
+      partner_1_icon: 'FileCheck',
+      partner_2_title: 'Individuelle Betreuung',
+      partner_2_desc: 'Persönlicher Ansprechpartner und maßgeschneiderte Lösungen für Ihre spezifische Situation.',
+      partner_2_icon: 'Users',
+      partner_3_title: 'Engagierte Vertretung',
+      partner_3_desc: 'Leidenschaftlicher Einsatz für Ihre Rechte – außergerichtlich und vor Gericht.',
+      partner_3_icon: 'Scale',
+      bookshelf_image: 'https://example.com/bookshelf-image.jpg',
+      seo_title: 'Rechtsgebiete - Liegenschaftsrecht, Familienrecht & mehr | Girardi & Auer',
+      seo_description: '9 Rechtsgebiete mit Expertise: Liegenschaftsrecht, Baurecht, Familienrecht, Erbrecht, Unternehmensrecht, Schadenersatz & mehr. ✓ Erfahrene Anwälte in Innsbruck',
+      seo_keywords: 'Liegenschaftsrecht Innsbruck, Familienrecht Tirol, Erbrecht, Baurecht, Unternehmensrecht, Schadenersatzrecht'
     });
     
     // Contact Page

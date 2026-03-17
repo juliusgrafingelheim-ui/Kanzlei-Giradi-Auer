@@ -1,445 +1,850 @@
 #!/usr/bin/env node
 /**
- * Seed Storyblok Page Content
- *
- * Populates the 5 page stories (pages/home, pages/weddings, pages/animals,
- * pages/portrait, pages/about) with all text + asset (ImageKit URL) fields.
+ * Storyblok Complete Setup Script for Girardi & Auer
+ * 
+ * This script:
+ *   1. CLEANS everything (deletes all stories, then all components)
+ *   2. Creates 6 component schemas (flat, no nesting/tabs)
+ *   3. Creates a "pages" folder
+ *   4. Creates & populates all 6 page stories with current content
+ *   5. Publishes everything
  *
  * Usage:
- *   STORYBLOK_MGMT_TOKEN=your_management_token node scripts/seed-storyblok-pages.mjs
- *
- * Options:
- *   --dry-run    Print what would be sent without actually calling the API
- *   --overwrite  Overwrite existing non-empty fields (default: only fill empty fields)
- *
- * Prerequisites:
- *   - A Storyblok Management API token (not the preview/public token!)
- *     Go to: Storyblok > Settings > Access Tokens > Generate (scope: "all")
- *   - The 5 content types (page_home, page_weddings, page_animals, page_portrait, page_about)
- *     must already exist in Storyblok
- *   - The folder "pages/" must already exist in Storyblok
- *   - Stories pages/home, pages/weddings, etc. should already be created (even if empty)
- *
- * What this script does:
- *   1. Fetches existing story for each page
- *   2. Merges seed data into the story content (preserving existing non-empty values unless --overwrite)
- *   3. PUTs the updated story back to Storyblok
- *   4. Publishes the story
+ *   STORYBLOK_MGMT_TOKEN=xxx node scripts/seed-storyblok-pages.mjs
+ *   STORYBLOK_MGMT_TOKEN=xxx node scripts/seed-storyblok-pages.mjs --dry-run
  */
 
 const SPACE_ID = "291045863485848";
 const API_BASE = `https://mapi.storyblok.com/v1/spaces/${SPACE_ID}`;
-
 const TOKEN = process.env.STORYBLOK_MGMT_TOKEN;
 const DRY_RUN = process.argv.includes("--dry-run");
-const OVERWRITE = process.argv.includes("--overwrite");
 
 if (!TOKEN && !DRY_RUN) {
   console.error("ERROR: Set STORYBLOK_MGMT_TOKEN environment variable.");
-  console.error("  Get one at: Storyblok > Settings > Access Tokens");
   process.exit(1);
 }
 
-// ─── Helper: API call with rate-limit handling ───────────────────────────
+// ─── Lucide Icon Options for Storyblok Select Fields ─────────────────────
+const LUCIDE_ICON_OPTIONS = [
+  "Award","Users","Target","TrendingUp","Scale","Shield","Briefcase","GraduationCap",
+  "Mail","Phone","MapPin","Clock","ArrowRight","Send","CheckCircle2","MessageSquare",
+  "Home","FileCheck","FileText","HeartHandshake","Building","Search","Lock","Eye",
+  "Database","Globe","ExternalLink","ChevronRight","Gavel","ClipboardList",
+  "Heart","Star","Bookmark","Calendar","Camera","Coffee","Compass","CreditCard",
+  "Download","Edit","FileQuestion","Flag","Folder","Gift","HandCoins","Handshake",
+  "HelpCircle","Info","Key","Landmark","Layers","Library","LifeBuoy","Lightbulb",
+  "Link","List","Map","Megaphone","Menu","Monitor","Newspaper","Package","Pen",
+  "PenTool","Percent","PersonStanding","PiggyBank","Pin","Printer","Receipt",
+  "Rocket","Ruler","ScrollText","Settings","ShieldCheck","Sparkles","Stamp",
+  "Swords","ThumbsUp","Timer","Trophy","Upload","UserCheck","Wallet","Wrench","Zap",
+].map(i => ({ name: i, value: i }));
+
+// ─── API Helper ──────────────────────────────────────────────────────────
 async function sbApi(method, path, body = null) {
+  if (DRY_RUN) {
+    console.log(`  [DRY RUN] ${method} ${path}`);
+    return body ? { story: { id: 0 }, component: { id: 0 } } : {};
+  }
   const url = `${API_BASE}${path}`;
   const opts = {
     method,
-    headers: {
-      Authorization: TOKEN,
-      "Content-Type": "application/json",
-    },
+    headers: { Authorization: TOKEN, "Content-Type": "application/json" },
   };
   if (body) opts.body = JSON.stringify(body);
 
-  for (let attempt = 0; attempt < 5; attempt++) {
+  for (let attempt = 0; attempt < 8; attempt++) {
     const res = await fetch(url, opts);
     if (res.status === 429) {
-      const wait = Math.pow(2, attempt) * 1000;
-      console.log(`  Rate limited, waiting ${wait}ms...`);
-      await new Promise((r) => setTimeout(r, wait));
+      const wait = Math.pow(2, attempt) * 1000 + Math.random() * 500;
+      console.log(`  Rate limited, waiting ${Math.round(wait)}ms...`);
+      await new Promise(r => setTimeout(r, wait));
       continue;
     }
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(`Storyblok API ${method} ${path} → ${res.status}: ${text}`);
+      throw new Error(`${method} ${path} → ${res.status}: ${text}`);
     }
-    return res.json();
+    const contentType = res.headers.get("content-type") || "";
+    if (contentType.includes("application/json")) return res.json();
+    return {};
   }
-  throw new Error(`Storyblok API: too many retries for ${method} ${path}`);
+  throw new Error(`Too many retries for ${method} ${path}`);
 }
 
-// ─── Helper: Find story by slug ──────────────────────────────────────────
-async function findStory(slug) {
+const delay = (ms = 400) => new Promise(r => setTimeout(r, ms));
+
+// ─── Helper: Make text field ─────────────────────────────────────────────
+const text = (pos, displayName = "") => ({
+  type: "text", pos, display_name: displayName || undefined,
+});
+const textarea = (pos, displayName = "") => ({
+  type: "textarea", pos, display_name: displayName || undefined,
+});
+const image = (pos, displayName = "") => ({
+  type: "image", pos, display_name: displayName || undefined,
+});
+const richtext = (pos, displayName = "") => ({
+  type: "richtext", pos, display_name: displayName || undefined,
+});
+const selectIcon = (pos, displayName = "Icon") => ({
+  type: "option", pos, display_name: displayName,
+  source: "self",
+  options: LUCIDE_ICON_OPTIONS,
+});
+const urlField = (pos, displayName = "") => ({
+  type: "text", pos, display_name: displayName || undefined,
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 1: CLEAN ALL
+// ═══════════════════════════════════════════════════════════════════════════
+async function cleanAll() {
+  console.log("\n🧹 STEP 1: Cleaning all stories and components...\n");
+
+  // Delete all stories
   try {
-    const data = await sbApi("GET", `/stories?with_slug=${slug}`);
-    return data.stories?.[0] || null;
-  } catch {
-    return null;
-  }
-}
-
-// ─── Seed Data ───────────────────────────────────────────────────────────
-
-const SEED_DATA = {
-  home: {
-    content_type: "page_home",
-    fields: {
-      // Assets (ImageKit URLs)
-      hero_video: "https://ik.imagekit.io/r2yqrg6np/Wedding%20Clip%20fu%CC%88r%20Wesbeite_ProRes422_1080p.mp4?updatedAt=1773071703884",
-      hero_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/E00A5635-2.jpg?updatedAt=1773007052923",
-      wedding_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_151924_0405(LowRes).jpg?updatedAt=1773007048480",
-      animals_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_R52_1038_(WebRes).jpg?updatedAt=1773000802084",
-      portrait_image: "https://ik.imagekit.io/r2yqrg6np/Other/R52_0832.jpg?updatedAt=1773014105220",
-      about_image: "https://ik.imagekit.io/r2yqrg6np/68e54c497a9dde9d00252dcb_WhatsApp%20Image%202025-09-16%20at%2022.32.17.avif",
-
-      // Text fields DE
-      hero_subtitle_de: "Fotografie & Videografie",
-      hero_subtitle_en: "Photography & Videography",
-      hero_tagline_de: "Timeless photos. Unforgettable stories.",
-      hero_tagline_en: "Timeless photos. Unforgettable stories.",
-      hero_cta_de: "Jetzt anfragen",
-      hero_cta_en: "Inquire now",
-
-      services_title_de: "Was ich anbiete",
-      services_title_en: "What I offer",
-
-      wedding_title_de: "Hochzeiten",
-      wedding_title_en: "Weddings",
-      wedding_desc_de: "Euer gro\u00DFer Tag verdient mehr als nur Fotos \u2013 er verdient Erinnerungen, die sich anf\u00FChlen. Ich begleite euch von den ersten aufgeregten Momenten beim Getting Ready bis zum letzten Tanz und halte alles fest, was dazwischen passiert: echte Emotionen, leise Gesten und pure Lebensfreude.",
-      wedding_desc_en: "Your big day deserves more than just photos \u2013 it deserves memories that feel real. I accompany you from the first excited moments of getting ready to the last dance and capture everything in between: genuine emotions, quiet gestures and pure joy.",
-
-      animals_title_de: "Tierfotografie",
-      animals_title_en: "Animal Photography",
-      animals_desc_de: "Ob treuer Hundeblick, die Eleganz eures Pferdes oder das verschmitzte Grinsen eurer Katze \u2013 eure Fellnase hat einen ganz eigenen Charakter, und genau den fange ich ein. Entspannt, geduldig und mit ganz viel Liebe zum Detail.",
-      animals_desc_en: "Whether a loyal dog\u2019s gaze, the elegance of your horse or the mischievous grin of your cat \u2013 your pet has a unique character, and that\u2019s exactly what I capture. Relaxed, patient and with lots of attention to detail.",
-
-      portrait_title_de: "Portrait & Mehr",
-      portrait_title_en: "Portrait & More",
-      portrait_desc_de: "Verliebte Blicke beim Couple Shooting, das Lachen eurer Kinder beim Familienfoto oder die Emotionen bei der Taufe \u2013 ich halte die Momente fest, die ihr nie vergessen wollt. Nat\u00FCrlich, ungezwungen und voller W\u00E4rme.",
-      portrait_desc_en: "Loving glances during a couple shoot, your children\u2019s laughter in a family photo or the emotions at a baptism \u2013 I capture the moments you never want to forget. Natural, relaxed and full of warmth.",
-
-      view_more_de: "Mehr erfahren",
-      view_more_en: "Learn more",
-
-      about_pretitle_de: "\u00DCber mich",
-      about_pretitle_en: "About me",
-      about_title_de: "Ich bin Mario",
-      about_title_en: "I'm Mario",
-      about_text_de: "Geboren in Bayern, in Innsbruck h\u00E4ngen geblieben. Mit 15 habe ich meine erste Kamera in der Hand gehabt und bin seitdem nicht mehr davon losgekommen. Aus dem Hobby wurde Leidenschaft, aus der Leidenschaft mein Beruf.",
-      about_text_en: "Born in Bavaria, settled in Innsbruck. At 15, I held my first camera and never looked back. What started as a hobby became passion, and passion became my profession.",
-      about_cta_de: "Mehr zu mir",
-      about_cta_en: "More about me",
-
-      philosophy_text_de: "Heute begleite ich Hochzeiten so, wie sie sind: echt, ungestellt, voller Gef\u00FChl. Ich mische mich unter die G\u00E4ste, bleibe unauff\u00E4llig und fange die Momente ein, die man nicht inszenieren kann. In der Bearbeitung bekommen eure Bilder einen Hauch Editorial, cineastisch und zeitlos \u2013 Erinnerungen, die euch f\u00FCr immer bleiben.",
-      philosophy_text_en: "Today I accompany weddings as they are: real, unposed, full of feeling. I mingle with the guests, stay unobtrusive and capture the moments that cannot be staged. In editing, your images get a touch of editorial, cinematic and timeless \u2013 memories that stay with you forever.",
-
-      how_it_works_pretitle_de: "SO L\u00C4UFT'S AB",
-      how_it_works_pretitle_en: "HOW IT WORKS",
-      how_it_works_title_de: "In 3 Schritten zu euren Bildern",
-      how_it_works_title_en: "3 steps to your images",
-
-      step1_title_de: "Anfrage & Kennenlernen",
-      step1_title_en: "Inquiry & Getting to know",
-      step1_text_de: "Schreibt mir und erz\u00E4hlt mir von euch. In einem unverbindlichen Erstgespr\u00E4ch kl\u00E4ren wir alle Fragen.",
-      step1_text_en: "Write to me and tell me about yourselves. In a free initial conversation we'll clarify everything.",
-
-      step2_title_de: "Planung & Vorbereitung",
-      step2_title_en: "Planning & Preparation",
-      step2_text_de: "Gemeinsam planen wir euer Shooting \u2013 von der Location \u00FCber den Zeitplan bis zur Stimmung.",
-      step2_text_en: "Together we plan your shoot \u2013 from location to schedule to mood.",
-
-      step3_title_de: "Shooting & Ergebnis",
-      step3_title_en: "Shoot & Results",
-      step3_text_de: "Am Tag selbst seid ihr entspannt, ich fange alles ein. Innerhalb weniger Wochen erhaltet ihr eure Galerie.",
-      step3_text_en: "On the day you relax, I capture everything. Within a few weeks you'll receive your gallery.",
-
-      inspired_title_de: "GET INSPIRED",
-      inspired_title_en: "GET INSPIRED",
-
-      load_more_de: "Mehr anzeigen",
-      load_more_en: "Load more",
-
-      wyldworks_title_de: "Foto & Video f\u00FCr Unternehmen?",
-      wyldworks_title_en: "Photo & video for businesses?",
-      wyldworks_desc_de: "Employer Branding, Imagefilme, Events & Social Media Content \u2013 das l\u00E4uft \u00FCber meine Agentur.",
-      wyldworks_desc_en: "Employer branding, image films, events & social media content \u2013 that\u2019s handled by my agency.",
-
-      cta_title_de: "Lass uns reden!",
-      cta_title_en: "Let's talk!",
-      cta_text_de: "Ihr plant eure Hochzeit, w\u00FCnscht euch ein Shooting mit eurer Familie oder eurem Vierbeiner, oder habt einfach eine Idee im Kopf? Schreibt mir ganz unverbindlich \u2013 ich freu mich, eure Geschichte zu h\u00F6ren und gemeinsam etwas Sch\u00F6nes daraus zu machen.",
-      cta_text_en: "Planning your wedding, want a shoot with your family or your furry friend, or just have an idea in mind? Drop me a message \u2013 no strings attached. I'd love to hear your story and create something beautiful together.",
-      cta_button_de: "Kontakt aufnehmen",
-      cta_button_en: "Get in touch",
-    },
-  },
-
-  weddings: {
-    content_type: "page_weddings",
-    fields: {
-      // Assets
-      hero_video: "https://ik.imagekit.io/r2yqrg6np/Lo%CC%88wenClip_fu%CC%88r_Webseite_compressed.mp4?updatedAt=1773077988312",
-      hero_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_152738_0428(LowRes).jpg?updatedAt=1773007053353",
-      photo1_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/5048_IG.jpg?updatedAt=1773007053682",
-      photo2_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_151924_0405(LowRes).jpg?updatedAt=1773007048480",
-      video_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/20251025_8D2A5136_(WebRes)-2.jpg?updatedAt=1773007047706",
-      details_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_153606_0453(LowRes).jpg?updatedAt=1773007049638",
-
-      // Text fields
-      hero_title_de: "Hochzeitsfotografie & Videografie",
-      hero_title_en: "Wedding Photography & Videography",
-      hero_subtitle_de: "Zeitlos & Authentisch",
-      hero_subtitle_en: "Timeless & Authentic",
-
-      photo_title_de: "WEDDING PHOTOGRAPHY",
-      photo_title_en: "WEDDING PHOTOGRAPHY",
-      photo_heading_de: "Zeitlos & Authentisch",
-      photo_heading_en: "Timeless & Authentic",
-      photo_text_de: "Egal ob ihr euch im kleinen Kreis das Ja-Wort gebt, in den Bergen ganz f\u00FCr euch allein heiratet oder mit all euren Lieblingsmenschen eine wilde Party feiert \u2013 ich halte eure Geschichte so fest, wie sie ist: ehrlich, ungezwungen und voller Leben. Kein gestelltes Posing, keine steifen Gruppenfotos. Stattdessen echte Emotionen, stille Momente und die pure Freude, die euren Tag so besonders macht. Mein Ziel: Wenn ihr eure Bilder anschaut, sollt ihr euch sofort zur\u00FCckerinnern, wie es sich angef\u00FChlt hat.",
-      photo_text_en: "Whether you say 'I do' in an intimate circle, elope to the mountains just the two of you, or throw a wild party with all your favorite people \u2013 I capture your story as it is: honest, relaxed and full of life. No stiff posing, no awkward group photos. Instead, real emotions, quiet moments and the pure joy that makes your day so special. My goal: when you look at your photos, you should instantly remember how it all felt.",
-      photo_packages_de: "Meine Foto-Pakete",
-      photo_packages_en: "My Photo Packages",
-
-      video_title_de: "WEDDING VIDEOGRAPHY",
-      video_title_en: "WEDDING VIDEOGRAPHY",
-      video_heading_de: "Dynamisch & Emotional",
-      video_heading_en: "Dynamic & Emotional",
-      video_text_de: "Ein Film f\u00E4ngt mehr ein als nur Bilder \u2013 er bewahrt Stimmen, Bewegungen und Stimmungen. Das Zittern in der Stimme beim Eheversprechen, das Lachen eurer besten Freunde, die Musik beim ersten Tanz. So k\u00F6nnt ihr auch Jahre sp\u00E4ter noch sp\u00FCren, wie es sich angef\u00FChlt hat. Meine Hochzeitsfilme sind cineastisch, emotional und genau so einzigartig wie euer Tag selbst.",
-      video_text_en: "A film captures more than just images \u2013 it preserves voices, movements and moods. The trembling in your voice during the vows, the laughter of your best friends, the music during your first dance. So you can still feel years later what it was like. My wedding films are cinematic, emotional and just as unique as your day itself.",
-      video_packages_de: "Meine Video-Pakete",
-      video_packages_en: "My Video Packages",
-
-      packages_title_de: "Meine Pakete",
-      packages_title_en: "My Packages",
-
-      cta_title_de: "Bereit f\u00FCr eure Geschichte?",
-      cta_title_en: "Ready for your story?",
-      cta_text_de: "Euer Tag, eure Geschichte \u2013 und ich freu mich riesig, sie erz\u00E4hlen zu d\u00FCrfen. Schreibt mir einfach, ganz unverbindlich. Wir quatschen kurz, und ihr merkt schnell, ob die Chemie stimmt.",
-      cta_text_en: "Your day, your story \u2013 and I'm so excited to tell it. Just message me, no strings attached. We'll have a quick chat and you'll know right away if the chemistry is right.",
-      cta_button_de: "Kontakt aufnehmen",
-      cta_button_en: "Get in touch",
-    },
-  },
-
-  animals: {
-    content_type: "page_animals",
-    fields: {
-      // Assets
-      hero_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_R52_1038_(WebRes).jpg?updatedAt=1773000802084",
-      dogs_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_Hundeshooting-3474_(WebRes).jpg?updatedAt=1772999916029",
-      horses_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/8D2A8472.jpg?updatedAt=1773000809216",
-      cats_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_Hundeshooting-4431_(WebRes).jpg?updatedAt=1772999913745",
-      studio_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_Hundeshooting-3474_(WebRes).jpg?updatedAt=1772999916029",
-      outdoor_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_R52_1038_(WebRes).jpg?updatedAt=1773000802084",
-
-      // Text fields
-      hero_title_de: "Tierfotografie",
-      hero_title_en: "Animal Photography",
-      hero_subtitle_de: "Pers\u00F6nlichkeit einfangen",
-      hero_subtitle_en: "Capturing Personality",
-
-      intro_de: "Ob treuer Begleiter, majest\u00E4tisches Pferd oder verschmuster Stubentiger \u2013 jedes Tier hat seinen ganz eigenen Charakter, und genau den m\u00F6chte ich einfangen. Ich nehme mir die Zeit, die es braucht, damit sich euer Liebling wohlf\u00FChlt und ganz er selbst sein kann. Das Ergebnis: nat\u00FCrliche, emotionale Bilder, die euch noch Jahre sp\u00E4ter zum L\u00E4cheln bringen. Denn mal ehrlich \u2013 unsere Vierbeiner verdienen die besten Fotos der Welt.",
-      intro_en: "Whether loyal companion, majestic horse or cuddly cat \u2013 every animal has its very own character, and that\u2019s exactly what I want to capture. I take all the time needed so your beloved pet feels comfortable and can be completely themselves. The result: natural, emotional images that will make you smile for years to come. Because let\u2019s be honest \u2013 our four-legged friends deserve the best photos in the world.",
-
-      dogs_title_de: "Hundefotografie",
-      dogs_title_en: "Dog Photography",
-      dogs_text_de: "Euer Hund ist nicht nur ein Haustier, sondern euer bester Freund, euer Seelenverwandter auf vier Pfoten? Dann verdient er Bilder, die genau das zeigen. Ob der treue Blick, das wilde Herumtollen im Wald oder das zufriedene D\u00F6sen auf der Couch \u2013 ich fange die kleinen und gro\u00DFen Momente ein, die euren Hund so besonders machen. Und ja: Leckerlis bringe ich selbst mit.",
-      dogs_text_en: "Your dog isn\u2019t just a pet, but your best friend, your soulmate on four paws? Then they deserve photos that show exactly that. Whether it\u2019s the loyal gaze, the wild romping through the forest or the content snoozing on the couch \u2013 I capture the big and small moments that make your dog so special. And yes: I bring the treats myself.",
-
-      horses_title_de: "Pferdefotografie",
-      horses_title_en: "Horse Photography",
-      horses_text_de: "Die Verbindung zwischen Mensch und Pferd ist etwas ganz Besonderes \u2013 kraftvoll, elegant und voller Vertrauen. Ob auf der Koppel, beim Ausritt oder im goldenen Abendlicht: Ich halte diese einzigartigen Momente fest. Mit Geduld und Ruhe, damit sich auch euer Pferd vor der Kamera wohlf\u00FChlt. Die Bilder werden so ausdrucksstark wie die Tiere selbst.",
-      horses_text_en: "The bond between human and horse is something truly special \u2013 powerful, elegant and full of trust. Whether in the paddock, on a ride or in the golden evening light: I capture these unique moments. With patience and calm, so your horse feels comfortable in front of the camera too. The images will be as expressive as the animals themselves.",
-
-      other_title_de: "Katzen, Kleintiere & Co.",
-      other_title_en: "Cats, Small Animals & More",
-      other_text_de: "Katzen, Kaninchen, V\u00F6gel oder auch mal ein ganz besonderes Haustier \u2013 bei mir ist jedes Tier willkommen. Erz\u00E4hlt mir von eurem Liebling und seinen Eigenheiten, und wir planen gemeinsam ein Shooting, das zu euch passt. Ob im Studio mit schickem Hintergrund oder drau\u00DFen in der Natur \u2013 Hauptsache, euer Tier f\u00FChlt sich wohl und die Bilder werden einzigartig.",
-      other_text_en: "Cats, rabbits, birds or even a very special pet \u2013 every animal is welcome. Tell me about your pet and their quirks, and we'll plan a shoot together that suits you. Whether in the studio with a stylish backdrop or outdoors in nature \u2013 the main thing is your pet feels comfortable and the photos are unique.",
-
-      cta_title_de: "Shooting f\u00FCr euren Liebling?",
-      cta_title_en: "Shoot for your beloved pet?",
-      cta_text_de: "Meldet euch einfach bei mir \u2013 erz\u00E4hlt mir von eurem Tier, und wir finden zusammen den perfekten Rahmen f\u00FCr euer Shooting. Ich freu mich auf eure Fellnasen, Samtpfoten und Huftiere!",
-      cta_text_en: "Just get in touch \u2013 tell me about your pet and we'll find the perfect setting for your shoot together. I can't wait to meet your furry, feathered and hoofed friends!",
-      cta_button_de: "Anfrage senden",
-      cta_button_en: "Send inquiry",
-    },
-  },
-
-  portrait: {
-    content_type: "page_portrait",
-    fields: {
-      // Assets
-      hero_image: "https://ik.imagekit.io/r2yqrg6np/Tiere/20251019_Hundeshooting-4431_(WebRes).jpg?updatedAt=1772999913745",
-      couple_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Getting%20Ready/20251004_8D2A0221_(WebRes).jpg?updatedAt=1773002917508",
-      family_image: "https://ik.imagekit.io/r2yqrg6np/Wedding/Paarfotos/250830_LJ_153525_0450(LowRes).jpg?updatedAt=1773007047995",
-      baptism_image: "https://ik.imagekit.io/r2yqrg6np/Other/7561IG.jpg?updatedAt=1773014105229",
-
-      // Text fields
-      hero_title_de: "Portrait & Mehr",
-      hero_title_en: "Portrait & More",
-      hero_subtitle_de: "Authentische Momente",
-      hero_subtitle_en: "Authentic Moments",
-
-      intro_de: "Das Leben steckt voller besonderer Momente \u2013 und die meisten davon passieren nicht vor einem perfekt inszenierten Hintergrund, sondern mittendrin im echten Leben. Genau dort bin ich am liebsten. Ob ihr als Paar ein paar gemeinsame Stunden genie\u00DFen wollt, eure Familie festhalten m\u00F6chtet oder einen besonderen Anlass feiert: Ich bin dabei und sorge daf\u00FCr, dass ihr euch vor der Kamera wohlf\u00FChlt. Nat\u00FCrlich, entspannt und mit Bildern, die eure Geschichte erz\u00E4hlen.",
-      intro_en: "Life is full of special moments \u2013 and most of them don't happen in front of a perfectly staged backdrop, but right in the middle of real life. That\u2019s exactly where I love to be. Whether you want to enjoy some time together as a couple, capture your family or celebrate a special occasion: I'm there and make sure you feel comfortable in front of the camera. Natural, relaxed and with images that tell your story.",
-
-      couple_title_de: "Couple Shooting",
-      couple_title_en: "Couple Shooting",
-      couple_text_de: "Ob frisch verliebt, frisch verlobt oder seit 20 Jahren ein Team \u2013 ein Paarshooting ist eure Zeit. Kein steifes Posieren, sondern gemeinsam lachen, spazieren, einfach ihr sein. Ich gebe euch sanfte Anweisungen, aber die sch\u00F6nsten Momente passieren von ganz allein. Ob in den Bergen bei Sonnenuntergang, in der Altstadt oder an eurem Lieblingsplatz \u2013 wir finden die perfekte Location f\u00FCr eure Geschichte.",
-      couple_text_en: "Whether freshly in love, newly engaged or a team for 20 years \u2013 a couple shoot is your time. No stiff posing, just laughing together, walking, simply being yourselves. I give gentle directions, but the best moments happen all on their own. Whether in the mountains at sunset, in the old town or at your favorite spot \u2013 we'll find the perfect location for your story.",
-
-      family_title_de: "Familie & Taufe",
-      family_title_en: "Family & Baptism",
-      family_text_de: "Kinder werden so schnell gro\u00DF, und die kleinen Momente verfliegen im Alltag. Ein Familienshooting ist eure Chance, innezuhalten und festzuhalten, was wirklich z\u00E4hlt: das Lachen, die Umarmungen, das Chaos \u2013 und die Liebe, die alles zusammenh\u00E4lt. Auch bei Taufen bin ich gerne dabei und dokumentiere diesen besonderen Tag diskret und einf\u00FChlsam.",
-      family_text_en: "Kids grow up so fast, and the little moments fly by in everyday life. A family shoot is your chance to pause and capture what truly matters: the laughter, the hugs, the chaos \u2013 and the love that holds it all together. I'm also happy to be there for baptisms, documenting this special day discreetly and sensitively.",
-
-      private_title_de: "Private Anl\u00E4sse",
-      private_title_en: "Private Occasions",
-      private_text_de: "Ob Geburtstag, Jubil\u00E4um, Firmenevent oder einfach ein Tag, der gefeiert werden soll \u2013 erz\u00E4hlt mir, was ihr vorhabt, und ich k\u00FCmmere mich um die Bilder. Ich passe mich eurem Event an, bleibe unauff\u00E4llig und halte die Momente fest, die den Tag besonders machen. Keine steifen Gruppenfotos, sondern echte Erinnerungen.",
-      private_text_en: "Whether birthday, anniversary, corporate event or simply a day worth celebrating \u2013 tell me what you're planning and I'll take care of the photos. I adapt to your event, stay unobtrusive and capture the moments that make the day special. No stiff group photos, just real memories.",
-
-      cta_title_de: "Euer Moment, eure Bilder",
-      cta_title_en: "Your moment, your images",
-      cta_text_de: "Egal ob Paar, Familie oder besonderer Anlass \u2013 schreibt mir einfach, was ihr euch vorstellt. Wir quatschen kurz und planen gemeinsam etwas, das sich f\u00FCr euch richtig anf\u00FChlt.",
-      cta_text_en: "Whether couple, family or special occasion \u2013 just tell me what you have in mind. We'll have a quick chat and plan something together that feels right for you.",
-      cta_button_de: "Jetzt anfragen",
-      cta_button_en: "Inquire now",
-    },
-  },
-
-  about: {
-    content_type: "page_about",
-    fields: {
-      // Assets
-      hero_video: "https://ik.imagekit.io/r2yqrg6np/Madeira%20Clip%20fu%CC%88r%20Webseite.mp4?updatedAt=1773024774420",
-      portrait_image: "https://ik.imagekit.io/r2yqrg6np/68e54c497a9dde9d00252dcb_WhatsApp%20Image%202025-09-16%20at%2022.32.17.avif",
-      mario_action_image: "https://ik.imagekit.io/r2yqrg6np/6966a461e78df6320fd2fd1e_20251019_Hundeshooting-3528_(WebRes).jpg",
-
-      // Text fields
-      about_title_de: "\u00DCber mich",
-      about_title_en: "About me",
-      heading_de: "Ich bin Mario",
-      heading_en: "I'm Mario",
-
-      text1_de: "Geboren in Bayern, in Innsbruck h\u00E4ngen geblieben. Mit 15 habe ich meine erste Kamera in der Hand gehabt und bin seitdem nicht mehr davon losgekommen. Aus dem Hobby wurde Leidenschaft, aus der Leidenschaft mein Beruf.",
-      text1_en: "Born in Bavaria, settled in Innsbruck. At 15, I held my first camera and never looked back. What started as a hobby became passion, and passion became my profession.",
-
-      text2_de: "Heute begleite ich Hochzeiten so, wie sie sind: echt, ungestellt, voller Gef\u00FChl. Ich mische mich unter die G\u00E4ste, bleibe unauff\u00E4llig und fange die Momente ein, die man nicht inszenieren kann. In der Bearbeitung bekommen eure Bilder einen Hauch Editorial, cineastisch und zeitlos \u2013 Erinnerungen, die euch f\u00FCr immer bleiben.",
-      text2_en: "Today I accompany weddings as they are: real, unposed, full of feeling. I mingle with the guests, stay unobtrusive and capture the moments that cannot be staged. In editing, your images get a touch of editorial, cinematic and timeless \u2013 memories that stay with you forever.",
-
-      text3_de: "Neben Hochzeiten fotografiere ich auch Tiere, Paare, Familien und andere besondere Anl\u00E4sse. Was alle meine Arbeiten verbindet: Authentizit\u00E4t und Emotion.",
-      text3_en: "Besides weddings, I also photograph animals, couples, families and other special occasions. What connects all my work: authenticity and emotion.",
-
-      philosophy_title_de: "Meine Arbeitsweise",
-      philosophy_title_en: "My Approach",
-
-      philosophy1_de: "Echt & Ungestellt",
-      philosophy1_en: "Real & Unposed",
-      philosophy1_text_de: "Keine gestellten Posen \u2013 ich fange ein, was wirklich passiert.",
-      philosophy1_text_en: "No staged poses \u2013 I capture what really happens.",
-
-      philosophy2_de: "Cineastisch & Editorial",
-      philosophy2_en: "Cinematic & Editorial",
-      philosophy2_text_de: "Meine Bearbeitung gibt euren Bildern einen filmischen, zeitlosen Look.",
-      philosophy2_text_en: "My editing gives your images a filmic, timeless look.",
-
-      philosophy3_de: "Pers\u00F6nlich & Nahbar",
-      philosophy3_en: "Personal & Approachable",
-      philosophy3_text_de: "Ich nehme mir Zeit f\u00FCr euch, lerne euch kennen und begleite euren Tag wie ein Freund.",
-      philosophy3_text_en: "I take time for you, get to know you and accompany your day like a friend.",
-    },
-  },
-};
-
-// ─── Main ────────────────────────────────────────────────────────────────
-
-async function seedPage(pageKey, config) {
-  const slug = `pages/${pageKey}`;
-  console.log(`\n${"=".repeat(60)}`);
-  console.log(`Seeding: ${slug} (content_type: ${config.content_type})`);
-  console.log(`${"=".repeat(60)}`);
-
-  if (DRY_RUN) {
-    console.log("  [DRY RUN] Would set these fields:");
-    for (const [k, v] of Object.entries(config.fields)) {
-      const display = typeof v === "string" && v.length > 80 ? v.slice(0, 80) + "..." : v;
-      console.log(`    ${k}: ${display}`);
+    let page = 1;
+    let allStories = [];
+    while (true) {
+      const data = await sbApi("GET", `/stories?page=${page}&per_page=100`);
+      if (!data.stories || data.stories.length === 0) break;
+      allStories = allStories.concat(data.stories);
+      page++;
     }
-    return;
-  }
-
-  // 1. Find the existing story
-  const existing = await findStory(slug);
-  if (!existing) {
-    console.error(`  ERROR: Story "${slug}" not found! Create it in Storyblok first.`);
-    console.error(`         Go to: Content > pages > + Entry > Name: "${pageKey}" > Content Type: ${config.content_type}`);
-    return;
-  }
-
-  console.log(`  Found story: id=${existing.id}, name="${existing.name}"`);
-
-  // 2. Merge fields
-  const currentContent = existing.content || {};
-  const mergedContent = { ...currentContent };
-  let updated = 0;
-  let skipped = 0;
-
-  // Ensure component field is set
-  mergedContent.component = config.content_type;
-
-  for (const [key, value] of Object.entries(config.fields)) {
-    const currentValue = currentContent[key];
-    const isEmpty = !currentValue || (typeof currentValue === "string" && !currentValue.trim());
-
-    if (isEmpty || OVERWRITE) {
-      mergedContent[key] = value;
-      updated++;
-      if (!isEmpty && OVERWRITE) {
-        console.log(`  [OVERWRITE] ${key}`);
-      }
-    } else {
-      skipped++;
+    console.log(`  Found ${allStories.length} stories to delete`);
+    for (const story of allStories) {
+      console.log(`  Deleting story: ${story.full_slug} (id: ${story.id})`);
+      await sbApi("DELETE", `/stories/${story.id}`);
+      await delay(300);
     }
-  }
-
-  console.log(`  Fields: ${updated} updated, ${skipped} skipped (already filled)`);
-
-  // 3. PUT the updated story
-  try {
-    await sbApi("PUT", `/stories/${existing.id}`, {
-      story: {
-        name: existing.name,
-        slug: existing.slug,
-        content: mergedContent,
-      },
-      publish: 1, // Auto-publish
-    });
-    console.log(`  SUCCESS: Story "${slug}" updated and published!`);
   } catch (err) {
-    console.error(`  FAILED: ${err.message}`);
+    console.log(`  Stories cleanup: ${err.message}`);
   }
 
-  // Small delay to avoid rate limits
-  await new Promise((r) => setTimeout(r, 300));
+  // Delete all custom components (not "page" or "feature")
+  try {
+    const data = await sbApi("GET", `/components`);
+    const components = data.components || [];
+    console.log(`  Found ${components.length} components`);
+    for (const comp of components) {
+      // Skip system components
+      if (comp.is_root || comp.is_nestable === false) {
+        // Still try to delete our custom ones
+      }
+      console.log(`  Deleting component: ${comp.name} (id: ${comp.id})`);
+      try {
+        await sbApi("DELETE", `/components/${comp.id}`);
+        await delay(300);
+      } catch (err) {
+        console.log(`    Could not delete ${comp.name}: ${err.message}`);
+      }
+    }
+  } catch (err) {
+    console.log(`  Components cleanup: ${err.message}`);
+  }
+
+  console.log("  ✅ Cleanup complete\n");
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 2: CREATE COMPONENT SCHEMAS
+// ═══════════════════════════════════════════════════════════════════════════
+function buildSchemas() {
+  let p = 0; // position counter
+
+  // ─── PAGE_HOME ───────────────────────────────────────────────────────
+  const page_home = {};
+  p = 0;
+  // SEO
+  page_home.seo_title = text(p++, "SEO Title");
+  page_home.seo_description = textarea(p++, "SEO Description");
+  page_home.seo_keywords = text(p++, "SEO Keywords");
+  // Hero
+  page_home.hero_title = text(p++, "Hero Titel");
+  page_home.hero_subtitle = textarea(p++, "Hero Untertitel");
+  page_home.hero_cta_text = text(p++, "Hero CTA Text");
+  page_home.hero_cta_link = text(p++, "Hero CTA Link");
+  page_home.hero_image = image(p++, "Hero Bild");
+  // Stats
+  page_home.stat_1_number = text(p++, "Statistik 1 Zahl");
+  page_home.stat_1_label = text(p++, "Statistik 1 Label");
+  page_home.stat_2_number = text(p++, "Statistik 2 Zahl");
+  page_home.stat_2_label = text(p++, "Statistik 2 Label");
+  page_home.stat_3_number = text(p++, "Statistik 3 Zahl");
+  page_home.stat_3_label = text(p++, "Statistik 3 Label");
+  // Process Steps
+  for (let i = 1; i <= 4; i++) {
+    page_home[`process_${i}_step`] = text(p++, `Prozess ${i} Nummer`);
+    page_home[`process_${i}_title`] = text(p++, `Prozess ${i} Titel`);
+    page_home[`process_${i}_desc`] = text(p++, `Prozess ${i} Beschreibung`);
+  }
+  // Expertise
+  page_home.expertise_title = text(p++, "Expertise Titel");
+  page_home.expertise_subtitle = text(p++, "Expertise Untertitel");
+  for (let i = 1; i <= 4; i++) {
+    page_home[`feature_${i}_title`] = text(p++, `Feature ${i} Titel`);
+    page_home[`feature_${i}_desc`] = text(p++, `Feature ${i} Beschreibung`);
+    page_home[`feature_${i}_icon`] = selectIcon(p++, `Feature ${i} Icon`);
+  }
+  // Team Section
+  page_home.team_section_title = text(p++, "Team Titel");
+  page_home.team_section_subtitle = textarea(p++, "Team Untertitel");
+  for (let i = 1; i <= 5; i++) {
+    page_home[`team_${i}_name`] = text(p++, `Team ${i} Name`);
+    page_home[`team_${i}_role`] = text(p++, `Team ${i} Rolle`);
+    page_home[`team_${i}_since`] = text(p++, `Team ${i} Seit`);
+  }
+  page_home.team_image_1 = image(p++, "Team Bild 1");
+  page_home.team_image_2 = image(p++, "Team Bild 2");
+  page_home.team_image_3 = image(p++, "Team Bild 3");
+  page_home.team_image_4 = image(p++, "Team Bild 4");
+  // Why Section
+  page_home.why_title = text(p++, "Warum-Titel");
+  page_home.why_subtitle = text(p++, "Warum-Untertitel");
+  for (let i = 1; i <= 3; i++) {
+    page_home[`why_${i}_title`] = text(p++, `Warum ${i} Titel`);
+    page_home[`why_${i}_desc`] = textarea(p++, `Warum ${i} Beschreibung`);
+    page_home[`why_${i}_icon`] = selectIcon(p++, `Warum ${i} Icon`);
+  }
+  // Location CTA
+  page_home.location_badge = text(p++, "Standort Badge");
+  page_home.location_title = text(p++, "Standort Titel");
+  page_home.location_subtitle = textarea(p++, "Standort Untertitel");
+  page_home.location_cta_text = text(p++, "Standort CTA Text");
+  page_home.location_cta_link = text(p++, "Standort CTA Link");
+  page_home.location_image = image(p++, "Standort Bild");
+
+  // ─── PAGE_ABOUT ──────────────────────────────────────────────────────
+  const page_about = {};
+  p = 0;
+  page_about.seo_title = text(p++, "SEO Title");
+  page_about.seo_description = textarea(p++, "SEO Description");
+  page_about.seo_keywords = text(p++, "SEO Keywords");
+  // Hero
+  page_about.hero_badge = text(p++, "Hero Badge");
+  page_about.hero_title_line1 = text(p++, "Hero Titel Zeile 1");
+  page_about.hero_title_line2 = text(p++, "Hero Titel Zeile 2 (grau)");
+  page_about.hero_description = textarea(p++, "Hero Beschreibung");
+  page_about.hero_image = image(p++, "Hero Bild");
+  page_about.hero_stat_1_value = text(p++, "Hero Stat 1 Wert");
+  page_about.hero_stat_1_label = text(p++, "Hero Stat 1 Label");
+  page_about.hero_stat_2_value = text(p++, "Hero Stat 2 Wert");
+  page_about.hero_stat_2_label = text(p++, "Hero Stat 2 Label");
+  page_about.hero_stat_3_value = text(p++, "Hero Stat 3 Wert");
+  page_about.hero_stat_3_label = text(p++, "Hero Stat 3 Label");
+  // Timeline
+  for (let i = 1; i <= 3; i++) {
+    page_about[`timeline_${i}_year`] = text(p++, `Timeline ${i} Jahr`);
+    page_about[`timeline_${i}_title`] = text(p++, `Timeline ${i} Titel`);
+    page_about[`timeline_${i}_desc`] = textarea(p++, `Timeline ${i} Beschreibung`);
+  }
+  page_about.quote_text = textarea(p++, "Zitat Text");
+  // Values
+  for (let i = 1; i <= 4; i++) {
+    page_about[`value_${i}_icon`] = selectIcon(p++, `Wert ${i} Icon`);
+    page_about[`value_${i}_title`] = text(p++, `Wert ${i} Titel`);
+    page_about[`value_${i}_desc`] = textarea(p++, `Wert ${i} Beschreibung`);
+  }
+  // Team (5 members)
+  page_about.team_badge = text(p++, "Team Badge");
+  page_about.team_title = text(p++, "Team Titel");
+  page_about.team_subtitle = textarea(p++, "Team Untertitel");
+  for (let i = 1; i <= 5; i++) {
+    page_about[`member_${i}_name`] = text(p++, `Mitglied ${i} Name`);
+    page_about[`member_${i}_title`] = text(p++, `Mitglied ${i} Titel`);
+    page_about[`member_${i}_role`] = text(p++, `Mitglied ${i} Rolle`);
+    page_about[`member_${i}_image`] = image(p++, `Mitglied ${i} Foto`);
+    page_about[`member_${i}_description`] = textarea(p++, `Mitglied ${i} Beschreibung`);
+    page_about[`member_${i}_since`] = text(p++, `Mitglied ${i} Seit`);
+    for (let s = 1; s <= 6; s++) {
+      page_about[`member_${i}_spec_${s}`] = text(p++, `Mitglied ${i} Schwerpunkt ${s}`);
+    }
+  }
+  // Sekretariat
+  page_about.sekretariat_title = text(p++, "Sekretariat Titel");
+  page_about.sekretariat_subtitle = textarea(p++, "Sekretariat Untertitel");
+  for (let i = 1; i <= 3; i++) {
+    page_about[`sekretariat_${i}_name`] = text(p++, `Sekretariat ${i} Name`);
+    page_about[`sekretariat_${i}_title`] = text(p++, `Sekretariat ${i} Titel`);
+  }
+  // CTA
+  page_about.cta_title = text(p++, "CTA Titel");
+  page_about.cta_description = textarea(p++, "CTA Beschreibung");
+  page_about.cta_button_text = text(p++, "CTA Button Text");
+  page_about.cta_phone = text(p++, "CTA Telefonnummer");
+
+  // ─── PAGE_PRACTICE_AREAS ─────────────────────────────────────────────
+  const page_practice_areas = {};
+  p = 0;
+  page_practice_areas.seo_title = text(p++, "SEO Title");
+  page_practice_areas.seo_description = textarea(p++, "SEO Description");
+  page_practice_areas.seo_keywords = text(p++, "SEO Keywords");
+  page_practice_areas.hero_badge = text(p++, "Hero Badge");
+  page_practice_areas.hero_title = text(p++, "Hero Titel");
+  page_practice_areas.hero_subtitle = textarea(p++, "Hero Untertitel");
+  // 9 Practice Areas
+  for (let i = 1; i <= 9; i++) {
+    page_practice_areas[`area_${i}_title`] = text(p++, `Bereich ${i} Titel`);
+    page_practice_areas[`area_${i}_desc`] = textarea(p++, `Bereich ${i} Beschreibung`);
+    page_practice_areas[`area_${i}_icon`] = selectIcon(p++, `Bereich ${i} Icon`);
+  }
+  // Process
+  page_practice_areas.process_badge = text(p++, "Prozess Badge");
+  page_practice_areas.process_title = text(p++, "Prozess Titel");
+  page_practice_areas.process_subtitle = text(p++, "Prozess Untertitel");
+  for (let i = 1; i <= 4; i++) {
+    page_practice_areas[`step_${i}_title`] = text(p++, `Schritt ${i} Titel`);
+    page_practice_areas[`step_${i}_desc`] = text(p++, `Schritt ${i} Beschreibung`);
+    page_practice_areas[`step_${i}_icon`] = selectIcon(p++, `Schritt ${i} Icon`);
+  }
+  // Info Section
+  page_practice_areas.info_title = text(p++, "Info Titel");
+  page_practice_areas.info_para_1 = textarea(p++, "Info Absatz 1");
+  page_practice_areas.info_para_2 = textarea(p++, "Info Absatz 2");
+  page_practice_areas.info_cta_text = text(p++, "Info CTA Text");
+  page_practice_areas.info_cta_link = text(p++, "Info CTA Link");
+  // Partner
+  page_practice_areas.partner_title = text(p++, "Partner Titel");
+  page_practice_areas.partner_subtitle = text(p++, "Partner Untertitel");
+  for (let i = 1; i <= 3; i++) {
+    page_practice_areas[`partner_${i}_title`] = text(p++, `Partner ${i} Titel`);
+    page_practice_areas[`partner_${i}_desc`] = textarea(p++, `Partner ${i} Beschreibung`);
+    page_practice_areas[`partner_${i}_icon`] = selectIcon(p++, `Partner ${i} Icon`);
+  }
+
+  // ─── PAGE_CONTACT ────────────────────────────────────────────────────
+  const page_contact = {};
+  p = 0;
+  page_contact.seo_title = text(p++, "SEO Title");
+  page_contact.seo_description = textarea(p++, "SEO Description");
+  page_contact.seo_keywords = text(p++, "SEO Keywords");
+  page_contact.hero_badge = text(p++, "Hero Badge");
+  page_contact.hero_title_line1 = text(p++, "Hero Titel Zeile 1");
+  page_contact.hero_title_line2 = text(p++, "Hero Titel Zeile 2 (grau)");
+  page_contact.hero_description = textarea(p++, "Hero Beschreibung");
+  // Quick Contact
+  page_contact.quick_phone_label = text(p++, "Quick Telefon Label");
+  page_contact.quick_phone = text(p++, "Quick Telefonnummer");
+  page_contact.quick_email_label = text(p++, "Quick Email Label");
+  page_contact.quick_email = text(p++, "Quick Email");
+  page_contact.quick_address_label = text(p++, "Quick Adresse Label");
+  page_contact.quick_address = text(p++, "Quick Adresse");
+  // Form
+  page_contact.form_title = text(p++, "Formular Titel");
+  page_contact.form_subtitle = text(p++, "Formular Untertitel");
+  page_contact.form_success_title = text(p++, "Formular Erfolg Titel");
+  page_contact.form_success_text = text(p++, "Formular Erfolg Text");
+  page_contact.form_datenschutz_text = text(p++, "Formular Datenschutz Text");
+  // Rechtsgebiet Options (comma-separated)
+  page_contact.rechtsgebiet_options = textarea(p++, "Rechtsgebiet Optionen (komma-getrennt)");
+  // Sidebar
+  page_contact.hours_title = text(p++, "Öffnungszeiten Titel");
+  page_contact.hours_1_days = text(p++, "Öffnungszeiten 1 Tage");
+  page_contact.hours_1_time = text(p++, "Öffnungszeiten 1 Zeit");
+  page_contact.hours_2_days = text(p++, "Öffnungszeiten 2 Tage");
+  page_contact.hours_2_time = text(p++, "Öffnungszeiten 2 Zeit");
+  page_contact.hours_note = text(p++, "Öffnungszeiten Hinweis");
+  page_contact.contact_title = text(p++, "Kontakt Titel");
+  page_contact.contact_phone = text(p++, "Kontakt Telefon");
+  page_contact.contact_fax = text(p++, "Kontakt Fax");
+  page_contact.contact_email = text(p++, "Kontakt Email");
+  page_contact.trust_title = text(p++, "Vertrauen Titel");
+  page_contact.trust_1 = text(p++, "Vertrauen 1");
+  page_contact.trust_2 = text(p++, "Vertrauen 2");
+  page_contact.trust_3 = text(p++, "Vertrauen 3");
+  page_contact.trust_4 = text(p++, "Vertrauen 4");
+  page_contact.address_title = text(p++, "Adresse Titel");
+  page_contact.address_line1 = text(p++, "Adresse Zeile 1");
+  page_contact.address_line2 = text(p++, "Adresse Zeile 2");
+  page_contact.address_country = text(p++, "Adresse Land");
+  page_contact.address_note = textarea(p++, "Adresse Hinweis");
+  // Map
+  page_contact.map_title = text(p++, "Karte Titel");
+  page_contact.map_subtitle = text(p++, "Karte Untertitel");
+  page_contact.map_embed_url = textarea(p++, "Karte Embed URL");
+  // CTA
+  page_contact.cta_title = text(p++, "CTA Titel");
+  page_contact.cta_description = textarea(p++, "CTA Beschreibung");
+
+  // ─── PAGE_IMPRESSUM ──────────────────────────────────────────────────
+  const page_impressum = {};
+  p = 0;
+  page_impressum.seo_title = text(p++, "SEO Title");
+  page_impressum.seo_description = textarea(p++, "SEO Description");
+  page_impressum.hero_title = text(p++, "Hero Titel");
+  page_impressum.hero_subtitle = text(p++, "Hero Untertitel");
+  page_impressum.kanzlei_name = text(p++, "Kanzlei Name");
+  page_impressum.kanzlei_desc = text(p++, "Kanzlei Beschreibung");
+  page_impressum.address_line1 = text(p++, "Adresse Zeile 1");
+  page_impressum.address_line2 = text(p++, "Adresse Zeile 2");
+  page_impressum.phone = text(p++, "Telefon");
+  page_impressum.fax = text(p++, "Fax");
+  page_impressum.email = text(p++, "Email");
+  for (let i = 1; i <= 3; i++) {
+    page_impressum[`ra_${i}_name`] = text(p++, `RA ${i} Name`);
+    page_impressum[`ra_${i}_advm`] = text(p++, `RA ${i} ADVM`);
+    page_impressum[`ra_${i}_uid`] = text(p++, `RA ${i} UID`);
+  }
+  page_impressum.berufsbezeichnung = text(p++, "Berufsbezeichnung");
+  page_impressum.kammer_name = text(p++, "Kammer Name");
+  page_impressum.kammer_address = text(p++, "Kammer Adresse");
+  page_impressum.kammer_url = text(p++, "Kammer URL");
+  page_impressum.vorschrift_1 = text(p++, "Vorschrift 1");
+  page_impressum.vorschrift_2 = text(p++, "Vorschrift 2");
+  page_impressum.vorschrift_3 = text(p++, "Vorschrift 3");
+  page_impressum.vorschrift_4 = text(p++, "Vorschrift 4");
+  page_impressum.vorschriften_url = text(p++, "Vorschriften URL");
+  page_impressum.haftung_inhalte_title = text(p++, "Haftung Inhalte Titel");
+  page_impressum.haftung_inhalte_text = textarea(p++, "Haftung Inhalte Text");
+  page_impressum.haftung_links_title = text(p++, "Haftung Links Titel");
+  page_impressum.haftung_links_text = textarea(p++, "Haftung Links Text");
+  page_impressum.urheberrecht_title = text(p++, "Urheberrecht Titel");
+  page_impressum.urheberrecht_text = textarea(p++, "Urheberrecht Text");
+
+  // ─── PAGE_DATENSCHUTZ ────────────────────────────────────────────────
+  const page_datenschutz = {};
+  p = 0;
+  page_datenschutz.seo_title = text(p++, "SEO Title");
+  page_datenschutz.seo_description = textarea(p++, "SEO Description");
+  page_datenschutz.hero_badge = text(p++, "Hero Badge");
+  page_datenschutz.hero_title = text(p++, "Hero Titel");
+  page_datenschutz.hero_subtitle = text(p++, "Hero Untertitel");
+  page_datenschutz.datenschutz_text = textarea(p++, "Datenschutz Einleitung");
+  page_datenschutz.verantwortlicher_name = text(p++, "Verantwortlicher Name");
+  page_datenschutz.verantwortlicher_address1 = text(p++, "Verantwortlicher Adresse 1");
+  page_datenschutz.verantwortlicher_address2 = text(p++, "Verantwortlicher Adresse 2");
+  page_datenschutz.verantwortlicher_phone = text(p++, "Verantwortlicher Telefon");
+  page_datenschutz.verantwortlicher_email = text(p++, "Verantwortlicher Email");
+  page_datenschutz.cookies_text_1 = textarea(p++, "Cookies Text 1");
+  page_datenschutz.cookies_text_2 = textarea(p++, "Cookies Text 2");
+  page_datenschutz.cookies_text_3 = textarea(p++, "Cookies Text 3");
+  page_datenschutz.google_maps_text_1 = textarea(p++, "Google Maps Text 1");
+  page_datenschutz.google_maps_text_2 = textarea(p++, "Google Maps Text 2");
+  page_datenschutz.google_maps_text_3 = textarea(p++, "Google Maps Text 3");
+  page_datenschutz.google_maps_link = text(p++, "Google Maps Datenschutz Link");
+  page_datenschutz.kontaktaufnahme_text = textarea(p++, "Kontaktaufnahme Text");
+  page_datenschutz.server_logs_intro = textarea(p++, "Server-Logs Einleitung");
+  for (let i = 1; i <= 6; i++) {
+    page_datenschutz[`server_log_${i}`] = text(p++, `Server-Log Punkt ${i}`);
+  }
+  page_datenschutz.server_logs_outro = textarea(p++, "Server-Logs Schlusssatz");
+  page_datenschutz.rechte_text = textarea(p++, "Ihre Rechte Text");
+  page_datenschutz.rechte_behoerde_name = text(p++, "Datenschutzbehörde Name");
+  page_datenschutz.rechte_behoerde_address = text(p++, "Datenschutzbehörde Adresse");
+  page_datenschutz.rechte_behoerde_phone = text(p++, "Datenschutzbehörde Telefon");
+  page_datenschutz.rechte_behoerde_url = text(p++, "Datenschutzbehörde URL");
+  page_datenschutz.ssl_text = textarea(p++, "SSL Text");
+  page_datenschutz.speicherdauer_text = textarea(p++, "Speicherdauer Text");
+  page_datenschutz.weitergabe_intro = textarea(p++, "Weitergabe Einleitung");
+  page_datenschutz.weitergabe_1 = textarea(p++, "Weitergabe Punkt 1");
+  page_datenschutz.weitergabe_2 = textarea(p++, "Weitergabe Punkt 2");
+  page_datenschutz.weitergabe_3 = textarea(p++, "Weitergabe Punkt 3");
+  page_datenschutz.weitergabe_4 = textarea(p++, "Weitergabe Punkt 4");
+  page_datenschutz.footer_stand = text(p++, "Stand");
+  page_datenschutz.footer_text = textarea(p++, "Fußnote Text");
+
+  return {
+    page_home,
+    page_about,
+    page_practice_areas,
+    page_contact,
+    page_impressum,
+    page_datenschutz,
+  };
+}
+
+async function createComponents() {
+  console.log("\n📐 STEP 2: Creating component schemas...\n");
+  const schemas = buildSchemas();
+
+  for (const [name, schema] of Object.entries(schemas)) {
+    const displayName = {
+      page_home: "Startseite",
+      page_about: "Über uns",
+      page_practice_areas: "Rechtsgebiete",
+      page_contact: "Kontakt",
+      page_impressum: "Impressum",
+      page_datenschutz: "Datenschutz",
+    }[name] || name;
+
+    console.log(`  Creating component: ${name} (${Object.keys(schema).length} fields)`);
+    await sbApi("POST", "/components", {
+      component: {
+        name,
+        display_name: displayName,
+        schema,
+        is_root: true,
+        is_nestable: false,
+      },
+    });
+    await delay(500);
+  }
+  console.log("  ✅ Components created\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 3: CREATE FOLDER + STORIES
+// ═══════════════════════════════════════════════════════════════════════════
+async function createFolderAndStories() {
+  console.log("\n📁 STEP 3: Creating folder and stories...\n");
+
+  // Create "pages" folder
+  let folderId;
+  try {
+    const res = await sbApi("POST", "/stories", {
+      story: { name: "Pages", slug: "pages", is_folder: true, default_root: "page_home" },
+    });
+    folderId = res.story?.id;
+    console.log(`  Created folder "pages" (id: ${folderId})`);
+  } catch (err) {
+    console.log(`  Folder creation: ${err.message}`);
+  }
+  await delay(500);
+
+  // Create stories
+  const pages = [
+    { slug: "home", name: "Startseite", component: "page_home" },
+    { slug: "about", name: "Über uns", component: "page_about" },
+    { slug: "practice-areas", name: "Rechtsgebiete", component: "page_practice_areas" },
+    { slug: "contact", name: "Kontakt", component: "page_contact" },
+    { slug: "impressum", name: "Impressum", component: "page_impressum" },
+    { slug: "datenschutz", name: "Datenschutz", component: "page_datenschutz" },
+  ];
+
+  const storyIds = {};
+  for (const page of pages) {
+    console.log(`  Creating story: pages/${page.slug}`);
+    try {
+      const res = await sbApi("POST", "/stories", {
+        story: {
+          name: page.name,
+          slug: page.slug,
+          parent_id: folderId || 0,
+          content: { component: page.component },
+        },
+      });
+      storyIds[page.slug] = res.story?.id;
+      console.log(`    → id: ${storyIds[page.slug]}`);
+    } catch (err) {
+      console.log(`    Error: ${err.message}`);
+    }
+    await delay(400);
+  }
+
+  console.log("  ✅ Stories created\n");
+  return storyIds;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STEP 4: POPULATE CONTENT
+// ═══════════════════════════════════════════════════════════════════════════
+function getSeedData() {
+  return {
+    home: {
+      component: "page_home",
+      seo_title: "Rechtsanwalt Innsbruck | Girardi & Auer | Seit 1989",
+      seo_description: "Erfahrene Rechtsanwälte in Innsbruck seit 1989. Spezialisiert auf Liegenschaftsrecht, Baurecht, Vertragsrecht & mehr. Persönliche Betreuung. Jetzt Termin vereinbaren!",
+      seo_keywords: "Rechtsanwalt Innsbruck, Anwalt Tirol, Rechtsberatung Innsbruck",
+      hero_title: "Ihre Rechtsanwälte in Innsbruck",
+      hero_subtitle: "Seit 1989 vertreten wir Ihre Interessen mit Kompetenz, Erfahrung und persönlichem Engagement. Vertrauen Sie auf unsere Expertise in allen Rechtsfragen.",
+      hero_cta_text: "Beratungstermin vereinbaren",
+      hero_cta_link: "/kontakt",
+      stat_1_number: "35+", stat_1_label: "Jahre Erfahrung",
+      stat_2_number: "9", stat_2_label: "Rechtsgebiete",
+      stat_3_number: "5", stat_3_label: "Experten",
+      process_1_step: "01", process_1_title: "Erstgespräch", process_1_desc: "Kostenlose Erstberatung zu Ihrem Anliegen",
+      process_2_step: "02", process_2_title: "Analyse", process_2_desc: "Sorgfältige Prüfung Ihrer rechtlichen Situation",
+      process_3_step: "03", process_3_title: "Strategie", process_3_desc: "Maßgeschneiderte Vorgehensweise für Sie",
+      process_4_step: "04", process_4_title: "Umsetzung", process_4_desc: "Engagierte Vertretung bis zum Ergebnis",
+      expertise_title: "Unsere Expertise",
+      expertise_subtitle: "Umfassende Rechtsberatung in allen relevanten Bereichen",
+      feature_1_title: "Liegenschaftsrecht", feature_1_desc: "Baurecht, Kauf- und Mietverträge", feature_1_icon: "Home",
+      feature_2_title: "Familienrecht", feature_2_desc: "Ehe, Scheidung, Obsorge & Unterhalt", feature_2_icon: "HeartHandshake",
+      feature_3_title: "Erbrecht", feature_3_desc: "Verlassenschaft & Testamente", feature_3_icon: "Users",
+      feature_4_title: "Unternehmensrecht", feature_4_desc: "Gründung & Gesellschaftsverträge", feature_4_icon: "Building",
+      team_section_title: "Unser Team",
+      team_section_subtitle: "Erfahrene Rechtsanwälte mit Engagement und Fachkompetenz",
+      team_1_name: "Dr. Thomas Girardi", team_1_role: "Rechtsanwalt · Kanzleigründer", team_1_since: "Seit 1989",
+      team_2_name: "DI (FH) Mag. Bernd Auer", team_2_role: "Rechtsanwalt · Regiepartner", team_2_since: "Seit 2010",
+      team_3_name: "Mag. Anna Girardi", team_3_role: "Rechtsanwältin · Regiepartnerin", team_3_since: "Seit 2025",
+      team_4_name: "Mag. B.A. Constanze Girardi", team_4_role: "Rechtsanwaltsanwärterin", team_4_since: "",
+      team_5_name: "Monika Girardi", team_5_role: "Kanzleiassistenz", team_5_since: "Seit 1989",
+      why_title: "Warum Girardi & Auer?",
+      why_subtitle: "Was uns seit über 35 Jahren auszeichnet",
+      why_1_title: "Langjährige Erfahrung", why_1_desc: "Seit 1989 betreuen wir erfolgreich Privatpersonen und Unternehmen in Tirol und darüber hinaus.", why_1_icon: "Award",
+      why_2_title: "Persönliche Betreuung", why_2_desc: "Ihre Anliegen erhalten stets die volle persönliche Aufmerksamkeit unseres erfahrenen Teams.", why_2_icon: "Users",
+      why_3_title: "Umfassende Expertise", why_3_desc: "Neun Rechtsgebiete und fundierte Ausbildung für kompetente und zuverlässige Beratung.", why_3_icon: "Scale",
+      location_badge: "Innsbruck Zentrum",
+      location_title: "Brauchen Sie rechtliche Beratung?",
+      location_subtitle: "Vereinbaren Sie noch heute einen Termin für ein unverbindliches Erstgespräch.",
+      location_cta_text: "Jetzt Kontakt aufnehmen",
+      location_cta_link: "/kontakt",
+    },
+
+    about: {
+      component: "page_about",
+      seo_title: "Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer",
+      seo_description: "Lernen Sie das Team der Kanzlei Girardi & Auer kennen. Dr. Thomas Girardi, Mag. Bernd Auer & Mag. Anna Girardi – Ihre Rechtsanwälte in Innsbruck seit 1989.",
+      seo_keywords: "Rechtsanwalt Team Innsbruck, Dr. Thomas Girardi, Bernd Auer, Anna Girardi",
+      hero_badge: "Seit 1989 in Innsbruck",
+      hero_title_line1: "Tradition trifft",
+      hero_title_line2: "Kompetenz",
+      hero_description: "Drei Generationen rechtlicher Expertise unter einem Dach. Wir verbinden langjährige Erfahrung mit modernem Denken für die beste Lösung Ihrer rechtlichen Anliegen.",
+      hero_stat_1_value: "35+", hero_stat_1_label: "Jahre Erfahrung",
+      hero_stat_2_value: "9", hero_stat_2_label: "Rechtsgebiete",
+      hero_stat_3_value: "3", hero_stat_3_label: "Rechtsanwälte",
+      timeline_1_year: "1989", timeline_1_title: "Die Gründung", timeline_1_desc: "RA Dr. Thomas Girardi gründet nach seiner Ausbildung bei einem renommierten Wirtschaftsanwalt seine eigene Rechtsanwaltskanzlei in Innsbruck.",
+      timeline_2_year: "2010", timeline_2_title: "Erster Regiepartner", timeline_2_desc: "RA DI (FH) Mag. Bernd Auer tritt nach seiner Ausbildung bei RA Dr. Thomas Girardi als Regiepartner in die Kanzlei ein.",
+      timeline_3_year: "2025", timeline_3_title: "Die nächste Generation", timeline_3_desc: "RA Mag. Anna Girardi tritt nach ihrer Ausbildung in der Kanzlei Girardi & Auer ebenfalls als Regiepartnerin ein.",
+      quote_text: "Besonderen Wert legt die Kanzlei auf eine allumfassende Rechtsberatung und den persönlichen Kontakt zu ihren Klienten.",
+      value_1_icon: "Award", value_1_title: "Expertise", value_1_desc: "Die Kanzlei betreut klein- und mittelständische Unternehmen sowie Privatpersonen in allen Belangen des Wirtschafts- und Zivilrechts.",
+      value_2_icon: "Target", value_2_title: "Qualität", value_2_desc: "Unsere langjährige Erfahrung und fundierte Ausbildung ermöglichen es uns, auch komplexe rechtliche Sachverhalte kompetent zu bearbeiten.",
+      value_3_icon: "Users", value_3_title: "Persönlich", value_3_desc: "Zuverlässig, sachlich und souverän – unsere Mandanten und ihre Fälle erhalten stets die volle persönliche Aufmerksamkeit unseres Teams.",
+      value_4_icon: "TrendingUp", value_4_title: "Maßgeschneidert", value_4_desc: "Wir setzen auf eine enge Zusammenarbeit und entwickeln gemeinsam maßgeschneiderte Lösungen für jede individuelle Situation.",
+      team_badge: "Unser Team",
+      team_title: "Die Menschen hinter der Kanzlei",
+      team_subtitle: "Lernen Sie die Menschen kennen, die sich mit Leidenschaft und Expertise für Ihre rechtlichen Anliegen einsetzen.",
+      member_1_name: "Dr. Thomas Girardi", member_1_title: "Rechtsanwalt", member_1_role: "Kanzleigründer", member_1_description: "Dr. Thomas Girardi ist seit 1988 als Rechtsanwalt eingetragen und auf Wirtschaftsrecht mit Schwerpunkt Immobilien-, Vertrags-, Bau-, Miet- und Erbrecht spezialisiert.", member_1_since: "Seit 1989",
+      member_1_spec_1: "Wirtschaftsrecht", member_1_spec_2: "Immobilienrecht", member_1_spec_3: "Vertragsrecht", member_1_spec_4: "Baurecht", member_1_spec_5: "Miet- und Erbrecht", member_1_spec_6: "",
+      member_2_name: "DI (FH) Mag. Bernd Auer", member_2_title: "Rechtsanwalt", member_2_role: "Regiepartner", member_2_description: "Mag. Bernd Auer ist seit 2010 selbständiger Rechtsanwalt und Regiepartner der Kanzleigemeinschaft. Seine Fachgebiete umfassen insbesondere Familien-, Schadenersatz-, Versicherungs-, Erb- und Vertragsrecht.", member_2_since: "Seit 2010",
+      member_2_spec_1: "Familienrecht", member_2_spec_2: "Schadenersatzrecht", member_2_spec_3: "Versicherungsrecht", member_2_spec_4: "Erbrecht", member_2_spec_5: "Vertragsrecht", member_2_spec_6: "",
+      member_3_name: "Mag. Anna Girardi", member_3_title: "Rechtsanwältin", member_3_role: "Regiepartnerin", member_3_description: "Mag. Anna Girardi ist seit April 2025 als selbstständige Rechtsanwältin eingetragen und Regiepartnerin der Kanzleigemeinschaft. Zudem ist sie ausgebildete Mediatorin, Konflikt-Coach und systemischer Coach.", member_3_since: "Seit 2025",
+      member_3_spec_1: "Familienrecht", member_3_spec_2: "Mietrecht", member_3_spec_3: "Mediation", member_3_spec_4: "Konflikt-Coaching", member_3_spec_5: "", member_3_spec_6: "",
+      member_4_name: "Mag. B.A. Constanze Girardi", member_4_title: "Rechtsanwaltsanwärterin", member_4_role: "Team", member_4_description: "Constanze Girardi ist als Rechtsanwaltsanwärterin Teil unseres Teams und unterstützt die Kanzlei in allen rechtlichen Belangen.", member_4_since: "Team",
+      member_4_spec_1: "", member_4_spec_2: "", member_4_spec_3: "", member_4_spec_4: "", member_4_spec_5: "", member_4_spec_6: "",
+      member_5_name: "Monika Girardi", member_5_title: "Kanzleiassistenz", member_5_role: "Team", member_5_description: "Monika Girardi ist seit 1989 als Kanzleiassistenz tätig und die erste Ansprechpartnerin für unsere Klienten.", member_5_since: "Seit 1989",
+      member_5_spec_1: "", member_5_spec_2: "", member_5_spec_3: "", member_5_spec_4: "", member_5_spec_5: "", member_5_spec_6: "",
+      sekretariat_title: "Gemeinsam stark für Sie",
+      sekretariat_subtitle: "Unser Sekretariat sorgt dafür, dass alles reibungslos abläuft. Sie sind Ihre ersten Ansprechpartner bei Terminvereinbarungen und organisatorischen Fragen.",
+      sekretariat_1_name: "Doris Blahut", sekretariat_1_title: "Kanzleiassistenz",
+      sekretariat_2_name: "Iva Federfová", sekretariat_2_title: "Kanzleiassistenz",
+      sekretariat_3_name: "Carina Schuler", sekretariat_3_title: "Kanzleiassistenz",
+      cta_title: "Bereit für ein Gespräch?",
+      cta_description: "Vereinbaren Sie ein unverbindliches Erstgespräch und lernen Sie uns persönlich kennen. Wir freuen uns auf Sie.",
+      cta_button_text: "Kontakt aufnehmen",
+      cta_phone: "+43 512 574095",
+    },
+
+    "practice-areas": {
+      component: "page_practice_areas",
+      seo_title: "Rechtsgebiete - Liegenschaftsrecht, Familienrecht & mehr | Girardi & Auer",
+      seo_description: "9 Rechtsgebiete mit Expertise: Liegenschaftsrecht, Baurecht, Familienrecht, Erbrecht, Unternehmensrecht, Schadenersatz & mehr. Erfahrene Anwälte in Innsbruck",
+      seo_keywords: "Liegenschaftsrecht Innsbruck, Familienrecht Tirol, Erbrecht, Baurecht",
+      hero_badge: "Unsere Expertise",
+      hero_title: "Tätigkeitsbereiche",
+      hero_subtitle: "Die Rechtsanwaltskanzlei \"Girardi & Auer\" betreut klein- und mittelständische Unternehmen sowie Privatpersonen vor allem in folgenden Rechtsgebieten:",
+      area_1_title: "Liegenschaftsrecht", area_1_desc: "Insbesondere Baurecht sowie Kauf-, Übergabe-, Bauträger- und Mietverträge", area_1_icon: "Home",
+      area_2_title: "Vergaberecht", area_2_desc: "Beratung und Vertretung in allen Belangen des Vergaberechts", area_2_icon: "FileCheck",
+      area_3_title: "Schadenersatzrecht", area_3_desc: "sowie Gewährleistungsrecht", area_3_icon: "FileText",
+      area_4_title: "Ehe- und Scheidungsrecht", area_4_desc: "sowie Obsorge, Kontakt- und Unterhaltsrecht", area_4_icon: "HeartHandshake",
+      area_5_title: "Erbrecht", area_5_desc: "Vertretung im Verlassenschaftsverfahren und Erstellung von letztwilligen Verfügungen", area_5_icon: "Users",
+      area_6_title: "Erwachsenenschutz", area_6_desc: "Erwachsenenvertretung und Beratung bei Vorsorgevollmachten", area_6_icon: "HeartHandshake",
+      area_7_title: "Unternehmensgründung", area_7_desc: "Beratung bei Gründung und Erstellung von Gesellschaftsverträgen", area_7_icon: "Building",
+      area_8_title: "Inkassowesen und Forderungsbetreibung", area_8_desc: "Professionelle Durchsetzung Ihrer Ansprüche", area_8_icon: "TrendingUp",
+      area_9_title: "Rechtsgutachten", area_9_desc: "Fundierte rechtliche Bewertungen und Einschätzungen", area_9_icon: "Search",
+      process_badge: "Unser Vorgehen",
+      process_title: "So arbeiten wir mit Ihnen",
+      process_subtitle: "Von der ersten Kontaktaufnahme bis zum erfolgreichen Abschluss",
+      step_1_title: "Erstgespräch", step_1_desc: "Kostenlose und unverbindliche Erstberatung zu Ihrem Anliegen.", step_1_icon: "Phone",
+      step_2_title: "Analyse", step_2_desc: "Sorgfältige Prüfung Ihrer Situation und der rechtlichen Lage.", step_2_icon: "ClipboardList",
+      step_3_title: "Strategie", step_3_desc: "Entwicklung einer maßgeschneiderten Vorgehensweise.", step_3_icon: "Target",
+      step_4_title: "Umsetzung", step_4_desc: "Engagierte Vertretung Ihrer Interessen bis zum Ergebnis.", step_4_icon: "Gavel",
+      info_title: "Umfassende rechtliche Beratung",
+      info_para_1: "Unsere langjährige Erfahrung und fundierte Ausbildung ermöglichen es uns, auch komplexe rechtliche Sachverhalte kompetent und zuverlässig zu bearbeiten. Wir vertreten Ihre Interessen sowohl außergerichtlich als auch vor Gericht.",
+      info_para_2: "Sollten Sie Fragen zu einem Rechtsgebiet haben, das hier nicht aufgeführt ist, kontaktieren Sie uns gerne. Wir beraten Sie umfassend oder vermitteln Ihnen bei Bedarf qualifizierte Kollegen aus unserem Netzwerk.",
+      info_cta_text: "Beratungstermin vereinbaren",
+      info_cta_link: "/kontakt",
+      partner_title: "Ihr verlässlicher Partner",
+      partner_subtitle: "Was Sie von unserer Kanzlei erwarten können",
+      partner_1_title: "Fundierte Expertise", partner_1_desc: "Profundes rechtliches Fachwissen in allen relevanten Bereichen des Zivil- und Wirtschaftsrechts.", partner_1_icon: "FileCheck",
+      partner_2_title: "Individuelle Betreuung", partner_2_desc: "Persönlicher Ansprechpartner und maßgeschneiderte Lösungen für Ihre spezifische Situation.", partner_2_icon: "Users",
+      partner_3_title: "Engagierte Vertretung", partner_3_desc: "Leidenschaftlicher Einsatz für Ihre Rechte – außergerichtlich und vor Gericht.", partner_3_icon: "Scale",
+    },
+
+    contact: {
+      component: "page_contact",
+      seo_title: "Kontakt - Rechtsberatung in Innsbruck | Girardi & Auer",
+      seo_description: "Kontaktieren Sie Rechtsanwaltskanzlei Girardi & Auer. Stainerstraße 2, 6020 Innsbruck. +43 512 574095. Jetzt Termin vereinbaren!",
+      seo_keywords: "Rechtsanwalt Kontakt Innsbruck, Anwalt Termin Innsbruck",
+      hero_badge: "Kontakt aufnehmen",
+      hero_title_line1: "Lassen Sie uns",
+      hero_title_line2: "sprechen",
+      hero_description: "Wir freuen uns auf Ihre Anfrage und beraten Sie gerne persönlich. Vereinbaren Sie noch heute einen Termin für ein unverbindliches Erstgespräch.",
+      quick_phone_label: "Telefon", quick_phone: "+43 512 574095",
+      quick_email_label: "E-Mail", quick_email: "info@girardi-auer.com",
+      quick_address_label: "Adresse", quick_address: "Stainerstraße 2, Innsbruck",
+      form_title: "Nachricht senden",
+      form_subtitle: "Wir antworten in der Regel innerhalb von 24 Stunden.",
+      form_success_title: "Vielen Dank!",
+      form_success_text: "Ihre Nachricht wurde erfolgreich gesendet. Wir melden uns in Kürze bei Ihnen.",
+      form_datenschutz_text: "Mit dem Absenden stimmen Sie unserer Datenschutzerklärung zu.",
+      rechtsgebiet_options: "Liegenschaftsrecht,Vergaberecht,Schadenersatzrecht,Ehe- und Scheidungsrecht,Erbrecht,Erwachsenenschutz,Unternehmensgründung,Inkassowesen,Rechtsgutachten,Sonstiges",
+      hours_title: "Öffnungszeiten",
+      hours_1_days: "Mo - Fr", hours_1_time: "08:00 - 12:00",
+      hours_2_days: "Mo - Do", hours_2_time: "14:00 - 16:30",
+      hours_note: "Termine außerhalb der Öffnungszeiten nach Vereinbarung",
+      contact_title: "Direkt erreichen",
+      contact_phone: "+43 512 574095", contact_fax: "+43 512 574097", contact_email: "info@girardi-auer.com",
+      trust_title: "Ihre Vorteile",
+      trust_1: "Unverbindliches Erstgespräch",
+      trust_2: "Vertrauliche Beratung",
+      trust_3: "Antwort innerhalb 24h",
+      trust_4: "35+ Jahre Erfahrung",
+      address_title: "Adresse",
+      address_line1: "Stainerstraße 2", address_line2: "6020 Innsbruck", address_country: "Österreich",
+      address_note: "Parkmöglichkeiten in umliegenden Parkhäusern. Gut erreichbar mit öffentlichen Verkehrsmitteln.",
+      map_title: "Unser Standort",
+      map_subtitle: "Zentral im Herzen von Innsbruck",
+      map_embed_url: "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2712.0!2d11.3894847!3d47.2666717!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x479d6bfb1e33fb15%3A0x1d6776d64f3b4acb!2sDr.%20Thomas%20Girardi!5e0!3m2!1sde!2sat!4v1710000000000!5m2!1sde!2sat",
+      cta_title: "Bereit für ein persönliches Gespräch?",
+      cta_description: "Rufen Sie uns direkt an oder schreiben Sie uns – wir freuen uns darauf, Ihnen zu helfen.",
+    },
+
+    impressum: {
+      component: "page_impressum",
+      seo_title: "Impressum | Rechtsanwaltskanzlei Girardi & Auer Innsbruck",
+      seo_description: "Impressum der Rechtsanwaltskanzlei Girardi & Auer, Stainerstraße 2, 6020 Innsbruck.",
+      hero_title: "Impressum",
+      hero_subtitle: "GIRARDI & AUER · Rechtsanwälte in Regiegemeinschaft",
+      kanzlei_name: "Girardi & Auer",
+      kanzlei_desc: "Rechtsanwälte in Regiegemeinschaft",
+      address_line1: "Stainerstraße 2", address_line2: "6020 Innsbruck",
+      phone: "+43 (0)512 / 57 40 95", fax: "+43 (0)512 / 57 40 97", email: "info@girardi-auer.com",
+      ra_1_name: "RA Dr. Thomas Girardi", ra_1_advm: "R802574", ra_1_uid: "ATU 31367703",
+      ra_2_name: "RA DI (FH) Mag. Bernd Auer", ra_2_advm: "R808398", ra_2_uid: "",
+      ra_3_name: "RA Mag. Anna Girardi", ra_3_advm: "R818867", ra_3_uid: "",
+      berufsbezeichnung: "Rechtsanwalt (verliehen in Österreich)",
+      kammer_name: "Rechtsanwaltskammer für Tirol",
+      kammer_address: "Meraner Straße 3, 6020 Innsbruck",
+      kammer_url: "https://www.rechtsanwaelte-tirol.at",
+      vorschrift_1: "Rechtsanwaltsordnung (RAO)",
+      vorschrift_2: "Allgemeine Bedingungen für Rechtsanwälte",
+      vorschrift_3: "Standesregeln der Rechtsanwälte",
+      vorschrift_4: "Disziplinarstatut der Rechtsanwaltskammern",
+      vorschriften_url: "https://www.rechtsanwaelte.at",
+      haftung_inhalte_title: "Haftung für Inhalte",
+      haftung_inhalte_text: "Die Inhalte unserer Seiten wurden mit größter Sorgfalt erstellt. Für die Richtigkeit, Vollständigkeit und Aktualität der Inhalte können wir jedoch keine Gewähr übernehmen. Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich.",
+      haftung_links_title: "Haftung für Links",
+      haftung_links_text: "Trotz sorgfältiger inhaltlicher Kontrolle übernehmen wir keine Haftung für die Inhalte externer Links. Für den Inhalt der verlinkten Seiten sind ausschließlich deren Betreiber verantwortlich.",
+      urheberrecht_title: "Urheberrecht",
+      urheberrecht_text: "Die durch die Seitenbetreiber erstellten Inhalte und Werke auf diesen Seiten unterliegen dem österreichischen Urheberrecht. Die Vervielfältigung, Bearbeitung, Verbreitung und jede Art der Verwertung außerhalb der Grenzen des Urheberrechtes bedürfen der schriftlichen Zustimmung des jeweiligen Autors bzw. Erstellers.",
+    },
+
+    datenschutz: {
+      component: "page_datenschutz",
+      seo_title: "Datenschutzerklärung | Rechtsanwaltskanzlei Girardi & Auer",
+      seo_description: "Datenschutzerklärung der Rechtsanwaltskanzlei Girardi & Auer. Informationen zur Verarbeitung personenbezogener Daten gemäß DSGVO.",
+      hero_badge: "DSGVO-konform",
+      hero_title: "Datenschutzerklärung",
+      hero_subtitle: "Informationen zur Verarbeitung personenbezogener Daten",
+      datenschutz_text: "Der Schutz Ihrer personenbezogenen Daten ist uns ein besonderes Anliegen. Wir verarbeiten Ihre Daten daher ausschließlich auf Grundlage der gesetzlichen Bestimmungen (DSGVO, TKG 2003). In dieser Datenschutzerklärung informieren wir Sie über die wichtigsten Aspekte der Datenverarbeitung im Rahmen unserer Website.",
+      verantwortlicher_name: "Rechtsanwaltskanzlei Girardi & Auer",
+      verantwortlicher_address1: "Stainerstraße 2",
+      verantwortlicher_address2: "6020 Innsbruck, Österreich",
+      verantwortlicher_phone: "+43 (0)512 / 57 40 95",
+      verantwortlicher_email: "info@girardi-auer.com",
+      cookies_text_1: "Unsere Website verwendet sogenannte Cookies. Dabei handelt es sich um kleine Textdateien, die mit Hilfe des Browsers auf Ihrem Endgerät abgelegt werden. Sie richten keinen Schaden an.",
+      cookies_text_2: "Wir nutzen Cookies dazu, unser Angebot nutzerfreundlich zu gestalten. Einige Cookies bleiben auf Ihrem Endgerät gespeichert, bis Sie diese löschen.",
+      cookies_text_3: "Wenn Sie dies nicht wünschen, so können Sie Ihren Browser so einrichten, dass er Sie über das Setzen von Cookies informiert und Sie dies nur im Einzelfall erlauben. Bei der Deaktivierung von Cookies kann die Funktionalität unserer Website eingeschränkt sein.",
+      google_maps_text_1: "Diese Website nutzt über eine API den Kartendienst Google Maps. Anbieter ist die Google Ireland Limited, Gordon House, Barrow Street, Dublin 4, Irland.",
+      google_maps_text_2: "Zur Nutzung der Funktionen von Google Maps ist es notwendig, Ihre IP-Adresse zu speichern. Diese Informationen werden in der Regel an einen Server von Google in den USA übertragen und dort gespeichert.",
+      google_maps_text_3: "Die Nutzung von Google Maps erfolgt im Interesse einer ansprechenden Darstellung unserer Online-Angebote. Dies stellt ein berechtigtes Interesse im Sinne von Art. 6 Abs. 1 lit. f DSGVO dar.",
+      google_maps_link: "https://policies.google.com/privacy",
+      kontaktaufnahme_text: "Wenn Sie per Formular auf der Website oder per E-Mail Kontakt mit uns aufnehmen, werden Ihre angegebenen Daten zwecks Bearbeitung der Anfrage und für den Fall von Anschlussfragen sechs Monate bei uns gespeichert. Diese Daten geben wir nicht ohne Ihre Einwilligung weiter.",
+      server_logs_intro: "Der Provider der Seiten erhebt und speichert automatisch Informationen in so genannten Server-Log-Dateien, die Ihr Browser automatisch an uns übermittelt:",
+      server_log_1: "Browsertyp und Browserversion",
+      server_log_2: "Verwendetes Betriebssystem",
+      server_log_3: "Referrer URL",
+      server_log_4: "Hostname des zugreifenden Rechners",
+      server_log_5: "Uhrzeit der Serveranfrage",
+      server_log_6: "IP-Adresse",
+      server_logs_outro: "Eine Zusammenführung dieser Daten mit anderen Datenquellen wird nicht vorgenommen. Die Erfassung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. f DSGVO.",
+      rechte_text: "Ihnen stehen grundsätzlich die Rechte auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit, Widerruf und Widerspruch zu. Wenn Sie glauben, dass die Verarbeitung Ihrer Daten gegen das Datenschutzrecht verstößt, können Sie sich bei der Aufsichtsbehörde beschweren.",
+      rechte_behoerde_name: "Österreichische Datenschutzbehörde",
+      rechte_behoerde_address: "Barichgasse 40-42, 1030 Wien",
+      rechte_behoerde_phone: "+43 1 52 152-0",
+      rechte_behoerde_url: "https://www.dsb.gv.at",
+      ssl_text: "Diese Seite nutzt aus Sicherheitsgründen und zum Schutz der Übertragung vertraulicher Inhalte eine SSL- bzw. TLS-Verschlüsselung. Eine verschlüsselte Verbindung erkennen Sie daran, dass die Adresszeile des Browsers von „http://" auf „https://" wechselt und an dem Schloss-Symbol in Ihrer Browserzeile.",
+      speicherdauer_text: "Wir speichern personenbezogene Daten nur so lange, wie dies für die Erfüllung des jeweiligen Zwecks erforderlich ist oder gesetzliche Aufbewahrungsfristen dies vorsehen. Nach Wegfall des jeweiligen Zwecks bzw. Ablauf der Fristen werden die entsprechenden Daten routinemäßig gelöscht.",
+      weitergabe_intro: "Eine Übermittlung Ihrer persönlichen Daten an Dritte zu anderen als den im Folgenden aufgeführten Zwecken findet nicht statt. Wir geben Ihre persönlichen Daten nur an Dritte weiter, wenn:",
+      weitergabe_1: "Sie Ihre nach Art. 6 Abs. 1 S. 1 lit. a DSGVO ausdrückliche Einwilligung dazu erteilt haben",
+      weitergabe_2: "die Weitergabe nach Art. 6 Abs. 1 S. 1 lit. f DSGVO zur Geltendmachung von Rechtsansprüchen erforderlich ist",
+      weitergabe_3: "für die Weitergabe nach Art. 6 Abs. 1 S. 1 lit. c DSGVO eine gesetzliche Verpflichtung besteht",
+      weitergabe_4: "dies gesetzlich zulässig und nach Art. 6 Abs. 1 S. 1 lit. b DSGVO für die Abwicklung von Vertragsverhältnissen erforderlich ist",
+      footer_stand: "März 2026",
+      footer_text: "Wir behalten uns vor, diese Datenschutzerklärung anzupassen, damit sie stets den aktuellen rechtlichen Anforderungen entspricht oder um Änderungen unserer Leistungen in der Datenschutzerklärung umzusetzen.",
+    },
+  };
+}
+
+async function populateStories(storyIds) {
+  console.log("\n📝 STEP 4: Populating stories with content...\n");
+  const seedData = getSeedData();
+
+  for (const [slug, content] of Object.entries(seedData)) {
+    const storyId = storyIds[slug];
+    if (!storyId) {
+      console.log(`  Skipping ${slug} (no story id)`);
+      continue;
+    }
+
+    console.log(`  Populating: pages/${slug} (${Object.keys(content).length} fields)`);
+
+    try {
+      // Get current story first
+      const current = await sbApi("GET", `/stories/${storyId}`);
+      await delay(300);
+
+      // Update with content
+      await sbApi("PUT", `/stories/${storyId}`, {
+        story: {
+          name: current.story.name,
+          slug: current.story.slug,
+          content: content,
+        },
+        publish: 1,
+      });
+      console.log(`    ✅ Published`);
+    } catch (err) {
+      console.log(`    ❌ Error: ${err.message}`);
+    }
+    await delay(400);
+  }
+
+  console.log("  ✅ All stories populated\n");
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// MAIN
+// ═══════════════════════════════════════════════════════════════════════════
 async function main() {
-  console.log("Storyblok Page Content Seeder");
-  console.log(`Space: ${SPACE_ID}`);
-  console.log(`Mode: ${DRY_RUN ? "DRY RUN" : OVERWRITE ? "OVERWRITE" : "FILL EMPTY ONLY"}`);
+  console.log("╔══════════════════════════════════════════════════════════╗");
+  console.log("║  Storyblok Setup: Girardi & Auer                       ║");
+  console.log("╚══════════════════════════════════════════════════════════╝");
+  console.log(`  Space: ${SPACE_ID}`);
+  console.log(`  Mode: ${DRY_RUN ? "DRY RUN" : "LIVE"}`);
 
-  for (const [pageKey, config] of Object.entries(SEED_DATA)) {
-    await seedPage(pageKey, config);
-  }
+  // Step 1: Clean
+  await cleanAll();
 
-  console.log("\n" + "=".repeat(60));
-  console.log("Done! Clear your browser's localStorage cache to see changes:");
-  console.log("  localStorage → delete all keys starting with 'sb_'");
-  console.log("  Or open DevTools → Application → Local Storage → Clear");
-  console.log("=".repeat(60));
+  // Step 2: Create components
+  await createComponents();
+
+  // Step 3: Create folder + stories
+  const storyIds = await createFolderAndStories();
+
+  // Step 4: Populate content
+  await populateStories(storyIds);
+
+  console.log("╔══════════════════════════════════════════════════════════╗");
+  console.log("║  ✅ COMPLETE! All done.                                 ║");
+  console.log("║                                                          ║");
+  console.log("║  Run with:                                               ║");
+  console.log("║  STORYBLOK_MGMT_TOKEN=xxx node scripts/seed-storyblok-pages.mjs ║");
+  console.log("╚══════════════════════════════════════════════════════════╝");
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error("Fatal error:", err);
   process.exit(1);
 });

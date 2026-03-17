@@ -1,23 +1,26 @@
 import { Helmet } from "react-helmet-async";
-import { Award, Users, Target, TrendingUp, Mail } from "lucide-react";
+import { Award, Users, Target, TrendingUp, Mail, ArrowRight, Scale, Shield, Briefcase, GraduationCap } from "lucide-react";
 import { ImageWithFallback } from "../components/figma/ImageWithFallback";
+import { motion } from "motion/react";
+import { Link } from "react-router";
+import { useStoryblok } from "../../hooks/useStoryblok";
+import * as LucideIcons from "lucide-react";
 
-// Placeholder images - werden später durch Storyblok CMS Bilder ersetzt
-const imgThomas = "";
-const imgBernd = "";
-const imgAnna = "";
-const imgConstanze = "";
-const imgMonika = "";
-const imgOffice1 = "";
-const imgOffice2 = "";
+const getIconComponent = (iconName: string) => {
+  const Icon = (LucideIcons as any)[iconName];
+  return Icon || Award;
+};
 
-const team = [
+const imgOffice1 = "https://images.unsplash.com/photo-1571055931484-22dce9d6c510?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxtb2Rlcm4lMjBsYXclMjBvZmZpY2UlMjBpbnRlcmlvciUyMHByb2Zlc3Npb25hbHxlbnwxfHx8fDE3NzM3NTc5NzF8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral";
+
+const teamMembers = [
   {
     name: "Dr. Thomas Girardi",
     title: "Rechtsanwalt",
-    image: imgThomas,
+    role: "Kanzleigründer",
+    image: "",
     description:
-      "Dr. Thomas Girardi ist seit 1988 als Rechtsanwalt eingetragen. Dr. Thomas Girardi ist auf Wirtschaftsrecht mit Schwerpunkt Immobilien-, Vertrags-, Bau-, Miet- und Erbrecht spezialisiert.",
+      "Dr. Thomas Girardi ist seit 1988 als Rechtsanwalt eingetragen und auf Wirtschaftsrecht mit Schwerpunkt Immobilien-, Vertrags-, Bau-, Miet- und Erbrecht spezialisiert.",
     since: "Seit 1989",
     specializations: [
       "Wirtschaftsrecht",
@@ -26,65 +29,156 @@ const team = [
       "Baurecht",
       "Miet- und Erbrecht",
     ],
+    isLawyer: true,
   },
   {
-    name: "Bernd Auer",
-    title: "Rechtsanwalt · DI (FH) Mag.",
-    image: imgBernd,
+    name: "DI (FH) Mag. Bernd Auer",
+    title: "Rechtsanwalt",
+    role: "Regiepartner",
+    image: "",
     description:
-      "Mag. Bernd Auer ist seit 2010 selbständiger Rechtsanwalt und Regiepartner der Kanzleigemeinschaft \"Girardi-Auer\". Seine Fachgebiete sind insbesondere Ehe-, Scheidungs-, Unterhalts-, Kontakt- und Obsorgrecht, Schadenersatz- und Gewährleistungsrecht, Versicherungsrecht, Erbrecht und Vertragsrecht.",
+      "Mag. Bernd Auer ist seit 2010 selbständiger Rechtsanwalt und Regiepartner der Kanzleigemeinschaft. Seine Fachgebiete umfassen insbesondere Familien-, Schadenersatz-, Versicherungs-, Erb- und Vertragsrecht.",
     since: "Seit 2010",
     specializations: [
-      "Ehe-, Scheidungs-, Unterhalts-, Kontakt- und Obsorgrecht",
-      "Schadenersatz- und Gewährleistungsrecht",
+      "Familienrecht",
+      "Schadenersatzrecht",
       "Versicherungsrecht",
       "Erbrecht",
       "Vertragsrecht",
     ],
+    isLawyer: true,
   },
   {
-    name: "Anna Girardi",
-    title: "Rechtsanwältin · Mag.",
-    image: imgAnna,
+    name: "Mag. Anna Girardi",
+    title: "Rechtsanwältin",
+    role: "Regiepartnerin",
+    image: "",
     description:
-      "Frau Mag. Anna Girardi hat sich nach ihrer Ausbildung in der Kanzlei Girardi & Auer im April 2025 als selbstständige Rechtsanwältin eintragen lassen und ist nunmehr Regiepartnerin der Kanzleigemeinschaft \"Girardi-Auer\". Ihre Fachgebiete sind insbesondere Ehe-, Scheidungs-, Unterhalts-, Kontakt- und Obsorgrecht sowie Mietrecht. Zudem ist sie ausgebildete Mediatorin, Konflikt-Coach und systemischer Coach und bietet somit professionelle Unterstützung, um Konflikte effektiv zu lösen.",
+      "Mag. Anna Girardi ist seit April 2025 als selbstständige Rechtsanwältin eingetragen und Regiepartnerin der Kanzleigemeinschaft. Zudem ist sie ausgebildete Mediatorin, Konflikt-Coach und systemischer Coach.",
     since: "Seit 2025",
     specializations: [
-      "Ehe-, Scheidungs-, Unterhalts-, Kontakt- und Obsorgrecht",
+      "Familienrecht",
       "Mietrecht",
       "Mediation",
       "Konflikt-Coaching",
-      "Systemisches Coaching",
     ],
+    isLawyer: true,
   },
   {
-    name: "Constanze Girardi",
-    title: "Rechtsanwaltsanwärterin · Mag., B.A.",
-    image: imgConstanze,
+    name: "Mag. B.A. Constanze Girardi",
+    title: "Rechtsanwaltsanwärterin",
+    role: "Team",
+    image: "",
     description:
       "Constanze Girardi ist als Rechtsanwaltsanwärterin Teil unseres Teams und unterstützt die Kanzlei in allen rechtlichen Belangen.",
     since: "Team",
     specializations: [],
+    isLawyer: false,
   },
   {
     name: "Monika Girardi",
     title: "Kanzleiassistenz",
-    image: imgMonika,
-    description: "Monika Girardi ist seit 1989 als Kanzleiassistenz tätig und die erste Ansprechpartnerin für unsere Klienten.",
+    role: "Team",
+    image: "",
+    description:
+      "Monika Girardi ist seit 1989 als Kanzleiassistenz tätig und die erste Ansprechpartnerin für unsere Klienten.",
     since: "Seit 1989",
     specializations: [],
+    isLawyer: false,
+  },
+];
+
+const timeline = [
+  {
+    year: "1989",
+    title: "Die Gründung",
+    description: "RA Dr. Thomas Girardi gründet nach seiner Ausbildung bei einem renommierten Wirtschaftsanwalt seine eigene Rechtsanwaltskanzlei in Innsbruck.",
+  },
+  {
+    year: "2010",
+    title: "Erster Regiepartner",
+    description: "RA DI (FH) Mag. Bernd Auer tritt nach seiner Ausbildung bei RA Dr. Thomas Girardi als Regiepartner in die Kanzlei ein.",
+  },
+  {
+    year: "2025",
+    title: "Die nächste Generation",
+    description: "RA Mag. Anna Girardi tritt nach ihrer Ausbildung in der Kanzlei Girardi & Auer ebenfalls als Regiepartnerin ein.",
   },
 ];
 
 export function AboutPage() {
+  const { content } = useStoryblok('pages/about');
+  const c = content as any;
+
+  // Build team from Storyblok or fallback
+  const teamData = [];
+  for (let i = 1; i <= 5; i++) {
+    const name = c?.[`member_${i}_name`];
+    if (name) {
+      const specs = [];
+      for (let s = 1; s <= 6; s++) {
+        const sp = c[`member_${i}_spec_${s}`];
+        if (sp) specs.push(sp);
+      }
+      teamData.push({
+        name,
+        title: c[`member_${i}_title`] || "",
+        role: c[`member_${i}_role`] || "",
+        image: c[`member_${i}_image`]?.filename || "",
+        description: c[`member_${i}_description`] || "",
+        since: c[`member_${i}_since`] || "",
+        specializations: specs,
+      });
+    }
+  }
+  const team = teamData.length > 0 ? teamData : teamMembers;
+
+  // Build timeline from Storyblok or fallback
+  const timelineData = [];
+  for (let i = 1; i <= 3; i++) {
+    const year = c?.[`timeline_${i}_year`];
+    if (year) {
+      timelineData.push({ year, title: c[`timeline_${i}_title`] || "", description: c[`timeline_${i}_desc`] || "" });
+    }
+  }
+  const timelineList = timelineData.length > 0 ? timelineData : timeline;
+
+  // Build values from Storyblok or fallback
+  const valuesData = [];
+  for (let i = 1; i <= 4; i++) {
+    const title = c?.[`value_${i}_title`];
+    if (title) {
+      valuesData.push({
+        icon: getIconComponent(c[`value_${i}_icon`] || "Award"),
+        title,
+        desc: c[`value_${i}_desc`] || "",
+        accent: i === 1 ? "from-[#1a365d] to-[#0f2744]" : i === 2 ? "from-slate-700 to-slate-800" : i === 3 ? "from-slate-600 to-slate-700" : "from-slate-500 to-slate-600",
+      });
+    }
+  }
+
+  // Build sekretariat from Storyblok or fallback
+  const sekretariatData = [];
+  for (let i = 1; i <= 3; i++) {
+    const name = c?.[`sekretariat_${i}_name`];
+    if (name) sekretariatData.push({ name, title: c[`sekretariat_${i}_title`] || "Kanzleiassistenz" });
+  }
+  const sekretariat = sekretariatData.length > 0 ? sekretariatData : [
+    { name: "Doris Blahut", title: "Kanzleiassistenz" },
+    { name: "Iva Federfová", title: "Kanzleiassistenz" },
+    { name: "Carina Schuler", title: "Kanzleiassistenz" },
+  ];
+
+  // Fallback-safe getters
+  const heroImage = c?.hero_image?.filename || imgOffice1;
+  const seoTitle = c?.seo_title || "Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer";
+  const seoDesc = c?.seo_description || "Lernen Sie das Team der Kanzlei Girardi & Auer kennen.";
+
   return (
     <>
       <Helmet>
-        <title>Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer</title>
-        <meta
-          name="description"
-          content="Lernen Sie das Team der Kanzlei Girardi & Auer kennen. Dr. Thomas Girardi, Mag. Bernd Auer & Mag. Anna Girardi – Ihre Rechtsanwälte in Innsbruck seit 1989."
-        />
+        <title>{seoTitle}</title>
+        <meta name="description" content={seoDesc} />
         <meta name="keywords" content="Rechtsanwalt Team Innsbruck, Dr. Thomas Girardi, Bernd Auer, Anna Girardi, Anwalt Tirol" />
         <link rel="canonical" href="https://www.girardi-auer.com/ueber-uns" />
         <meta property="og:title" content="Über uns | Rechtsanwaltskanzlei Girardi & Auer" />
@@ -93,231 +187,276 @@ export function AboutPage() {
         <meta property="og:url" content="https://www.girardi-auer.com/ueber-uns" />
       </Helmet>
 
-      {/* Hero */}
-      <section className="pt-32 pb-16 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+      {/* Hero - Full Width Dark */}
+      <section className="relative pt-32 pb-20 bg-slate-900 text-white overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#1a365d] via-slate-900 to-slate-950"></div>
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-[#1a365d]/20 rounded-full blur-[128px] -translate-y-1/2 translate-x-1/4"></div>
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-6">
-                <Award className="w-4 h-4 text-slate-700" />
-                <span className="text-sm font-medium text-slate-700">Über uns</span>
-              </div>
-              
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6 leading-tight">
-                Tradition trifft Moderne
-              </h1>
-              
-              <p className="text-xl text-slate-600 leading-relaxed mb-8">
-                Seit 1989 stehen wir für kompetente Rechtsberatung mit persönlicher Note. 
-                Erfahren Sie mehr über unsere Geschichte, Werte und unser Team.
-              </p>
+            <motion.div initial="hidden" animate="visible" variants={stagger}>
+              <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 border border-white/10 rounded-full mb-8">
+                <Award className="w-4 h-4" />
+                <span className="text-sm">{c?.hero_badge || "Seit 1989 in Innsbruck"}</span>
+              </motion.div>
 
-              <div className="grid grid-cols-3 gap-6">
-                <div>
-                  <div className="text-3xl font-bold text-[#1a365d] mb-1">1989</div>
-                  <div className="text-sm text-slate-600">Gegründet</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-[#1a365d] mb-1">35+</div>
-                  <div className="text-sm text-slate-600">Jahre</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-[#1a365d] mb-1">5</div>
-                  <div className="text-sm text-slate-600">Team-Member</div>
+              <motion.h1 variants={fadeInUp} className="text-4xl sm:text-5xl lg:text-6xl mb-6 leading-[1.1] tracking-tight">
+                {c?.hero_title_line1 || "Tradition trifft"}<br />
+                <span className="text-slate-400">{c?.hero_title_line2 || "Kompetenz"}</span>
+              </motion.h1>
+
+              <motion.p variants={fadeInUp} className="text-lg text-slate-300 leading-relaxed mb-10 max-w-lg">
+                {c?.hero_description || "Drei Generationen rechtlicher Expertise unter einem Dach. Wir verbinden langjährige Erfahrung mit modernem Denken für die beste Lösung Ihrer rechtlichen Anliegen."}
+              </motion.p>
+
+              <motion.div variants={fadeInUp} className="grid grid-cols-3 gap-8">
+                {[
+                  { value: c?.hero_stat_1_value || "35+", label: c?.hero_stat_1_label || "Jahre Erfahrung" },
+                  { value: c?.hero_stat_2_value || "9", label: c?.hero_stat_2_label || "Rechtsgebiete" },
+                  { value: c?.hero_stat_3_value || "3", label: c?.hero_stat_3_label || "Rechtsanwälte" },
+                ].map((stat) => (
+                  <div key={stat.label}>
+                    <div className="text-3xl sm:text-4xl text-white mb-1">{stat.value}</div>
+                    <div className="text-sm text-slate-400">{stat.label}</div>
+                  </div>
+                ))}
+              </motion.div>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, x: 40 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative hidden lg:block"
+            >
+              <div className="rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10">
+                <ImageWithFallback
+                  src={heroImage}
+                  alt="Kanzlei Girardi & Auer"
+                  className="w-full h-full object-cover aspect-[4/3]"
+                />
+              </div>
+              <div className="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-2xl px-6 py-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-50 rounded-full flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm text-slate-900">Tiroler RAK</div>
+                    <div className="text-xs text-slate-500">Eingetragene Kanzlei</div>
+                  </div>
                 </div>
               </div>
-            </div>
-
-            <div className="rounded-2xl overflow-hidden shadow-2xl">
-              <ImageWithFallback
-                src={imgOffice1}
-                alt="Kanzlei Büro mit Bibliothek"
-                className="w-full h-full object-cover aspect-[4/3]"
-              />
-            </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      {/* Geschichte */}
-      <section className="py-20 bg-white">
+      {/* Timeline */}
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-12 text-center">
-              Unsere Geschichte
-            </h2>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-20"
+          >
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
+              <Scale className="w-4 h-4 text-slate-600" />
+              <span className="text-sm text-slate-600">Unsere Geschichte</span>
+            </motion.div>
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
+              Über drei Jahrzehnte Rechtsberatung
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
+              Von der Gründung bis zur nächsten Generation – ein Überblick über unsere Kanzleigeschichte
+            </motion.p>
+          </motion.div>
 
-            <div className="space-y-12">
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="w-16 h-16 bg-gradient-to-br from-[#1a365d] to-[#0f2744] rounded-2xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-lg">1989</span>
+          <div className="relative max-w-4xl mx-auto">
+            <div className="absolute left-8 lg:left-1/2 top-0 bottom-0 w-px bg-slate-200 -translate-x-1/2"></div>
+
+            <motion.div
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true }}
+              variants={stagger}
+              className="space-y-16"
+            >
+              {timelineList.map((item, index) => (
+                <motion.div
+                  key={item.year}
+                  variants={fadeInUp}
+                  className={`relative flex items-start gap-8 ${
+                    index % 2 === 0 ? "lg:flex-row" : "lg:flex-row-reverse"
+                  }`}
+                >
+                  <div className="absolute left-8 lg:left-1/2 -translate-x-1/2 z-10">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#1a365d] to-[#0f2744] rounded-full flex items-center justify-center shadow-lg ring-4 ring-white">
+                      <span className="text-white text-sm">{item.year}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="pt-2">
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">Die Gründung</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    RA Dr. Thomas Girardi hat nach seiner Ausbildung bei einem renommierten Wirtschaftsanwalt seine eigene Rechtsanwaltskanzlei im Jahre 1989 in Innsbruck gegründet.
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="w-16 h-16 bg-gradient-to-br from-slate-600 to-slate-700 rounded-2xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-lg">2010</span>
+                  <div className={`ml-20 lg:ml-0 lg:w-1/2 ${
+                    index % 2 === 0 ? "lg:pr-16 lg:text-right" : "lg:pl-16 lg:ml-auto"
+                  }`}>
+                    <div className="bg-slate-50 rounded-2xl p-8 border border-slate-100 hover:shadow-lg transition-shadow">
+                      <h3 className="text-xl text-slate-900 mb-2">{item.title}</h3>
+                      <p className="text-slate-600 leading-relaxed">{item.description}</p>
+                    </div>
                   </div>
-                </div>
-                <div className="pt-2">
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">Erster Regiepartner</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    RA DI (FH) Mag. Bernd Auer ist nach seiner Ausbildung bei RA Dr. Thomas Girardi in die Kanzlei als Regiepartner eingetreten.
-                  </p>
-                </div>
-              </div>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
 
-              <div className="flex gap-6">
-                <div className="flex-shrink-0">
-                  <div className="w-16 h-16 bg-gradient-to-br from-slate-500 to-slate-600 rounded-2xl flex items-center justify-center shadow-lg">
-                    <span className="text-white font-bold text-lg">2025</span>
-                  </div>
-                </div>
-                <div className="pt-2">
-                  <h3 className="text-xl font-bold text-slate-900 mb-2">Die nächste Generation</h3>
-                  <p className="text-slate-600 leading-relaxed">
-                    RA Mag. Anna Girardi ist nach ihrer Ausbildung in der Kanzlei Girardi & Auer ebenfalls als Regiepartnerin eingetreten.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-12 p-8 bg-slate-50 rounded-2xl border border-slate-200">
-              <p className="text-lg text-slate-900 font-medium text-center">
-                Besonderen Wert legt die Kanzlei auf eine allumfassende Rechtsberatung 
-                und den persönlichen Kontakt zu ihren Klienten.
+          {/* Quote */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-3xl mx-auto mt-20"
+          >
+            <div className="relative bg-[#1a365d] rounded-2xl p-10 text-center">
+              <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 bg-[#1a365d] rotate-45"></div>
+              <p className="text-lg text-white leading-relaxed italic">
+                &ldquo;{c?.quote_text || "Besonderen Wert legt die Kanzlei auf eine allumfassende Rechtsberatung und den persönlichen Kontakt zu ihren Klienten."}&rdquo;
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Unsere Werte */}
-      <section className="py-20 bg-slate-900 text-white">
+      {/* Values - Horizontal Bento */}
+      <section className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold mb-4">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-16"
+          >
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
               Unsere Werte
-            </h2>
-            <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
               Was uns auszeichnet und antreibt
-            </p>
-          </div>
+            </motion.p>
+          </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Award className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Expertise</h3>
-              <p className="text-slate-300 leading-relaxed">
-                Die Rechtsanwaltskanzlei „Girardi & Auer" betreut klein- und mittelständische Unternehmen sowie Privatpersonen in allen Belangen des Wirtschafts- und Zivilrechts.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Target className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Qualität</h3>
-              <p className="text-slate-300 leading-relaxed">
-                Unsere langjährige Erfahrung und fundierte Ausbildung ermöglichen es uns, auch komplexe rechtliche Sachverhalte kompetent und zuverlässig zu bearbeiten.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Users className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Persönlich</h3>
-              <p className="text-slate-300 leading-relaxed">
-                Zuverlässig, sachlich und souverän – unsere Mandanten und ihre Fälle erhalten stets die volle persönliche Aufmerksamkeit unseres Teams.
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <TrendingUp className="w-8 h-8 text-slate-300" />
-              </div>
-              <h3 className="text-xl font-bold mb-3">Maßgeschneidert</h3>
-              <p className="text-slate-300 leading-relaxed">
-                Wir setzen auf eine enge Zusammenarbeit mit unseren Mandanten und entwickeln gemeinsam maßgeschneiderte Lösungen für jede individuelle Situation.
-              </p>
-            </div>
-          </div>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="grid md:grid-cols-2 gap-6"
+          >
+            {valuesData.map((value) => (
+              <motion.div
+                key={value.title}
+                variants={fadeInUp}
+                className="group bg-white rounded-2xl p-8 border border-slate-100 hover:shadow-xl transition-all duration-300 hover:border-[#1a365d]/20 relative overflow-hidden"
+              >
+                <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${value.accent} scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-300`}></div>
+                <div className="flex gap-6">
+                  <div className={`flex-shrink-0 w-14 h-14 bg-gradient-to-br ${value.accent} rounded-xl flex items-center justify-center shadow-lg`}>
+                    <value.icon className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl text-slate-900 mb-2">{value.title}</h3>
+                    <p className="text-slate-600 leading-relaxed">{value.desc}</p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </section>
 
-      {/* Unser Team */}
-      <section className="py-20 bg-white">
+      {/* Team - All 5 Members */}
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Unser Team
-            </h2>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-              Lernen Sie die Menschen kennen, die sich mit Leidenschaft und Expertise für Ihre rechtlichen Anliegen einsetzen.
-            </p>
-          </div>
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+            className="text-center mb-20"
+          >
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full mb-4">
+              <Briefcase className="w-4 h-4 text-slate-600" />
+              <span className="text-sm text-slate-600">{c?.team_badge || "Unser Team"}</span>
+            </motion.div>
+            <motion.h2 variants={fadeInUp} className="text-3xl sm:text-4xl text-slate-900 mb-4">
+              {c?.team_title || "Die Menschen hinter der Kanzlei"}
+            </motion.h2>
+            <motion.p variants={fadeInUp} className="text-lg text-slate-600 max-w-2xl mx-auto">
+              {c?.team_subtitle || "Lernen Sie die Menschen kennen, die sich mit Leidenschaft und Expertise für Ihre rechtlichen Anliegen einsetzen."}
+            </motion.p>
+          </motion.div>
 
-          <div className="space-y-24">
+          <div className="space-y-20">
             {team.map((member, index) => (
-              <div
+              <motion.div
                 key={member.name}
-                className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-start ${
-                  index % 2 === 1 ? 'lg:flex-row-reverse' : ''
-                }`}
+                initial="hidden"
+                whileInView="visible"
+                viewport={{ once: true, margin: "-80px" }}
+                variants={stagger}
+                className="grid lg:grid-cols-5 gap-10 items-start"
               >
-                {/* Image */}
-                <div className={`${index % 2 === 1 ? 'lg:order-2' : ''}`}>
-                  <div className="relative">
-                    <div className="aspect-square rounded-2xl overflow-hidden shadow-xl">
+                {/* Image - Square */}
+                <motion.div
+                  variants={fadeInUp}
+                  className={`lg:col-span-2 ${index % 2 === 1 ? "lg:order-2" : ""}`}
+                >
+                  <div className="relative group">
+                    <div className="aspect-square rounded-2xl overflow-hidden bg-slate-100 shadow-xl ring-1 ring-slate-200">
                       <ImageWithFallback
                         src={member.image}
                         alt={member.name}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="absolute -bottom-6 -right-6 bg-[#1a365d] text-white px-6 py-3 rounded-xl shadow-lg">
-                      <div className="text-sm font-medium">{member.since}</div>
+                    {/* Year badge */}
+                    <div className="absolute -bottom-4 right-6 bg-[#1a365d] text-white px-5 py-2.5 rounded-xl shadow-lg">
+                      <div className="text-sm">{member.since}</div>
                     </div>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Content */}
-                <div className={`space-y-6 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
-                  <div>
-                    <h3 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-2">
-                      {member.name}
-                    </h3>
-                    <p className="text-lg text-[#1a365d] font-medium">
-                      {member.title}
-                    </p>
+                <motion.div
+                  variants={fadeInUp}
+                  className={`lg:col-span-3 flex flex-col justify-center ${index % 2 === 1 ? "lg:order-1" : ""}`}
+                >
+                  <div className="inline-flex items-center gap-2 text-sm text-[#1a365d] bg-[#1a365d]/5 px-3 py-1 rounded-full w-fit mb-4">
+                    <GraduationCap className="w-3.5 h-3.5" />
+                    {member.role}
                   </div>
-
-                  <p className="text-lg text-slate-600 leading-relaxed">
+                  <h3 className="text-3xl sm:text-4xl text-slate-900 mb-2">
+                    {member.name}
+                  </h3>
+                  <p className="text-lg text-[#1a365d] mb-6">
+                    {member.title}
+                  </p>
+                  <p className="text-slate-600 leading-relaxed mb-8 max-w-xl">
                     {member.description}
                   </p>
 
                   {member.specializations.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900 mb-4 uppercase tracking-wide">
+                    <div className="mb-8">
+                      <h4 className="text-xs text-slate-500 uppercase tracking-widest mb-3">
                         Schwerpunkte
                       </h4>
                       <div className="flex flex-wrap gap-2">
                         {member.specializations.map((spec) => (
                           <span
                             key={spec}
-                            className="px-4 py-2 bg-slate-50 text-slate-700 text-sm rounded-lg border border-slate-200"
+                            className="px-3 py-1.5 bg-slate-50 text-slate-700 text-sm rounded-lg border border-slate-200 hover:border-[#1a365d]/30 hover:bg-[#1a365d]/5 transition-colors"
                           >
                             {spec}
                           </span>
@@ -328,78 +467,96 @@ export function AboutPage() {
 
                   <a
                     href="mailto:info@girardi-auer.com"
-                    className="inline-flex items-center gap-2 text-[#1a365d] hover:text-[#152d4d] font-medium"
+                    className="inline-flex items-center gap-2 text-[#1a365d] hover:text-[#152d4d] group/link w-fit"
                   >
                     <Mail className="w-4 h-4" />
-                    Kontakt aufnehmen
+                    <span>Kontakt aufnehmen</span>
+                    <ArrowRight className="w-4 h-4 group-hover/link:translate-x-1 transition-transform" />
                   </a>
-                </div>
-              </div>
+                </motion.div>
+              </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Team Zusammenarbeit & Sekretariat */}
-      <section className="py-20 bg-slate-50">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="max-w-4xl mx-auto text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-6">
-              Gemeinsam stark für Sie
-            </h2>
-            <p className="text-lg text-slate-600 leading-relaxed">
-              Unser Team arbeitet Hand in Hand, um Ihnen die bestmögliche rechtliche Beratung und Vertretung zu bieten. 
-              Durch regelmäßigen Austausch und Zusammenarbeit können wir auf ein breites Spektrum an Expertise zurückgreifen 
-              und so auch komplexe Fälle optimal betreuen.
-            </p>
-          </div>
+      {/* Sekretariat - Dark Banner (only secretariat staff) */}
+      <section className="py-24 bg-slate-900 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#1a365d]/20 rounded-full blur-[128px] -translate-y-1/2 translate-x-1/4"></div>
 
-          {/* Sekretariat */}
-          <div className="mt-16 text-center">
-            <h3 className="text-xl font-semibold text-slate-900 mb-6">
-              Sekretariat
-            </h3>
-            <div className="flex flex-wrap justify-center gap-3">
-              <span className="px-5 py-3 bg-white text-slate-700 rounded-lg border border-slate-200 shadow-sm">
-                Doris Blahut
-              </span>
-              <span className="px-5 py-3 bg-white text-slate-700 rounded-lg border border-slate-200 shadow-sm">
-                Iva Federfová
-              </span>
-              <span className="px-5 py-3 bg-white text-slate-700 rounded-lg border border-slate-200 shadow-sm">
-                Carina Schuler
-              </span>
-            </div>
-          </div>
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true }}
+            variants={stagger}
+          >
+            <motion.div variants={fadeInUp} className="text-center mb-16">
+              <h2 className="text-3xl sm:text-4xl mb-4">
+                {c?.sekretariat_title || "Gemeinsam stark für Sie"}
+              </h2>
+              <p className="text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                {c?.sekretariat_subtitle || "Unser Sekretariat sorgt dafür, dass alles reibungslos abläuft. Sie sind Ihre ersten Ansprechpartner bei Terminvereinbarungen und organisatorischen Fragen."}
+              </p>
+            </motion.div>
+
+            <motion.div variants={fadeInUp} className="text-center">
+              <h3 className="text-lg text-slate-400 mb-6">Sekretariat</h3>
+              <div className="flex flex-wrap justify-center gap-4">
+                {sekretariat.map((s) => (
+                  <div
+                    key={s.name}
+                    className="bg-white/5 backdrop-blur-sm rounded-2xl px-8 py-6 border border-white/10 hover:bg-white/10 transition-all"
+                  >
+                    <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Users className="w-5 h-5 text-slate-300" />
+                    </div>
+                    <span className="text-white">{s.name}</span>
+                    <div className="text-sm text-slate-400 mt-1">{s.title}</div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
-      {/* Standort Section */}
-      <section className="py-20 bg-white">
+      {/* CTA */}
+      <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Unser Standort in Innsbruck
-            </h2>
-            <p className="text-lg text-slate-600 max-w-3xl mx-auto">
-              Unsere Kanzlei befindet sich im Herzen von Innsbruck, in der Stainerstraße 2. 
-              Die zentrale Lage ermöglicht eine gute Erreichbarkeit sowohl für Klienten aus Innsbruck 
-              als auch aus dem gesamten Tiroler Raum und Bayern.
-            </p>
-          </div>
-          
-          <div className="rounded-2xl overflow-hidden shadow-2xl h-[500px]">
-            <iframe
-              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2711.9479489489385!2d11.398097776934576!3d47.26824297116366!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x479d6c0e0e0e0e0e%3A0x0!2sStainerstra%C3%9Fe%202%2C%206020%20Innsbruck!5e0!3m2!1sde!2sat!4v1234567890123!5m2!1sde!2sat"
-              width="100%"
-              height="100%"
-              style={{ border: 0 }}
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-              title="Kanzlei Girardi & Auer Standort Innsbruck"
-            ></iframe>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="relative bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-12 lg:p-16 overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-64 h-64 bg-[#1a365d]/5 rounded-full blur-3xl translate-x-1/3 -translate-y-1/3"></div>
+            <div className="relative grid lg:grid-cols-2 gap-8 items-center">
+              <div>
+                <h2 className="text-3xl sm:text-4xl text-slate-900 mb-4">
+                  {c?.cta_title || "Bereit für ein Gespräch?"}
+                </h2>
+                <p className="text-lg text-slate-600 leading-relaxed">
+                  {c?.cta_description || "Vereinbaren Sie ein unverbindliches Erstgespräch und lernen Sie uns persönlich kennen. Wir freuen uns auf Sie."}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-4 lg:justify-end">
+                <Link
+                  to="/kontakt"
+                  className="inline-flex items-center justify-center gap-2 bg-[#1a365d] text-white px-8 py-4 rounded-xl hover:bg-[#152d4d] transition-all shadow-lg shadow-[#1a365d]/20 hover:shadow-xl hover:-translate-y-0.5 group"
+                >
+                  {c?.cta_button_text || "Kontakt aufnehmen"}
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+                <a
+                  href="tel:+43512574095"
+                  className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-xl border border-slate-200 hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  {c?.cta_phone || "+43 512 574095"}
+                </a>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </section>
     </>

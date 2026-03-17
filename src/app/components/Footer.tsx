@@ -12,14 +12,18 @@ export function Footer() {
             <div className="flex items-center gap-3 mb-6">
               <LogoWhite className="h-10 w-auto" />
               <div>
-                <div className="font-bold text-xl">Girardi & Auer</div>
-                <div className="text-sm text-slate-400">Rechtsanwälte in Innsbruck</div>
+                <div className="font-bold text-xl tracking-tight">Girardi & Auer</div>
+                <div className="text-sm text-slate-400">Rechtsanwälte · Innsbruck</div>
               </div>
             </div>
-            <p className="text-slate-400 leading-relaxed max-w-md">
+            <p className="text-slate-400 leading-relaxed max-w-md mb-6">
               Professionelle Rechtsberatung mit persönlicher Note seit 1989. 
               Wir betreuen Privatpersonen und Unternehmen in allen rechtlichen Belangen.
             </p>
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              Derzeit erreichbar
+            </div>
           </div>
 
           {/* Quick Links */}
@@ -91,7 +95,7 @@ export function Footer() {
         <div className="pt-8 border-t border-slate-800">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-sm text-slate-400">
-              © 2025 Rechtsanwaltskanzlei Girardi & Auer. Alle Rechte vorbehalten.
+              &copy; {new Date().getFullYear()} Rechtsanwaltskanzlei Girardi & Auer. Alle Rechte vorbehalten.
             </p>
             <div className="flex gap-6 text-sm">
               <Link

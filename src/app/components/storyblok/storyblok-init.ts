@@ -1,71 +1,42 @@
 /**
  * Storyblok CMS Initialization
  *
- * This file initializes the Storyblok SDK for the entire app.
+ * This file initializes the Storyblok SDK for the Girardi & Auer website.
  * The access token should be set as an environment variable:
- *   VITE_STORYBLOK_TOKEN=your_preview_or_public_token
+ *   VITE_STORYBLOK_TOKEN=your_public_token
  *
  * In Vercel, add this as an environment variable.
  *
  * Content Types to create in Storyblok:
  *
- * 1. "package" (Content Type)
- *    - name (text)
- *    - price (text)
- *    - subtitle (text)
- *    - subtitle_en (text)
- *    - features (textarea) — one feature per line
- *    - features_en (textarea) — one feature per line
- *    - highlight (boolean)
- *    - category (single-option: wedding-photo, wedding-video, portrait, animals)
- *    - sort_order (number)
+ * 1. "home" (Content Type) — Homepage content
+ *    - hero_title (text)
+ *    - hero_subtitle (text)
+ *    - hero_cta_text (text)
+ *    - hero_cta_link (text)
+ *    - hero_image (asset)
+ *    - stat_1_number (text), stat_1_label (text)
+ *    - stat_2_number (text), stat_2_label (text)
+ *    - stat_3_number (text), stat_3_label (text)
+ *    - expertise_title (text), expertise_subtitle (text)
+ *    - feature_{1-4}_title (text), feature_{1-4}_desc (text), feature_{1-4}_icon (text)
+ *    - team_section_title (text), team_section_subtitle (text)
+ *    - team_image_1 (asset), team_image_2 (asset)
+ *    - why_title (text)
+ *    - why_{1-3}_title (text), why_{1-3}_desc (text), why_{1-3}_icon (text)
+ *    - location_badge (text), location_title (text), location_subtitle (text)
+ *    - location_cta_text (text), location_cta_link (text)
+ *    - seo_title (text), seo_description (text), seo_keywords (text)
  *
- * 2. "addon" (Content Type)
- *    - text_de (text)
- *    - text_en (text)
- *    - sort_order (number)
+ * 2. "practice-areas" (Content Type) — Practice areas page
+ *    - hero_badge (text), hero_title (text), hero_subtitle (text)
+ *    - area_{1-9}_title (text), area_{1-9}_desc (text), area_{1-9}_icon (text)
+ *    - info_title (text), info_para_1 (text), info_para_2 (text)
+ *    - partner_title (text), partner_subtitle (text)
+ *    - bookshelf_image (asset)
+ *    - seo_title (text), seo_description (text), seo_keywords (text)
  *
- * 3. "gallery_image" (Content Type)
- *    - page (single-option: hochzeit, tiere, portrait, home, about)
- *    - category (text) — e.g. "standesamt", "getting-ready", "paarshooting"
- *    - image_url (text) — ImageKit URL
- *    - alt_de (text)
- *    - alt_en (text)
- *    - sort_order (number)
- *
- * 4. "review" (Content Type)
- *    - author (text)
- *    - rating (number)
- *    - text (textarea)
- *    - text_en (textarea)
- *    - sort_order (number)
- *
- * 5. "faq_item" (Content Type)
- *    - question_de (text)
- *    - question_en (text)
- *    - answer_de (textarea or richtext)
- *    - answer_en (textarea or richtext)
- *    - category (single-option: allgemein, hochzeit, tierfotografie, portrait, buchung)
- *    - sort_order (number)
- *
- * 6. "page_content" (Content Type) — optional, for managing page texts
- *    - page_key (text) — e.g. "home", "weddings", "animals"
- *    - seo_title_de (text)
- *    - seo_title_en (text)
- *    - seo_description_de (textarea)
- *    - seo_description_en (textarea)
- *    - seo_keywords (text)
- *    - hero_image (text — ImageKit URL)
- *    - hero_video (text — optional video URL)
- *    - sections (blocks) — nested bloks for page sections
- *
- * Folder structure in Storyblok:
- *   /packages/     — all package stories
- *   /addons/       — all addon stories
- *   /gallery/      — all gallery image stories
- *   /reviews/      — all review stories
- *   /faqs/         — all FAQ stories
- *   /pages/        — optional page content stories
+ * Story slugs: home, practice-areas
  */
 
 import { storyblokInit, apiPlugin } from "@storyblok/react";
@@ -111,7 +82,8 @@ export function isStoryblokConfigured(): boolean {
 
 /**
  * Get the content version based on environment.
- * "draft" for preview/development, "published" for production.
+ * IMPORTANT: Public tokens can only access "published" content.
+ * "draft" requires a preview/private token.
  */
 export function getContentVersion(): "draft" | "published" {
   if (isPreview) return "draft";
