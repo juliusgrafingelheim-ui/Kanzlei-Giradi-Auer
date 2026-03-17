@@ -133,19 +133,32 @@ export async function fetchStoryblokStory<T = any>(
   const cached = getCache<{ content: T; name: string }>(cacheKey);
   if (cached) return cached;
 
+  const isEditor = typeof window !== "undefined" && window.location.search.includes("_storyblok");
+
   try {
     const version = getContentVersion();
-    const url = `${API_BASE}/stories/${slug}?token=${STORYBLOK_TOKEN}&version=${version}`;
+    const url = `${API_BASE}/stories/${slug}?token=${STORYBLOK_TOKEN}&version=${version}&cv=${Date.now()}`;
     const response = await fetchWithRetry(url);
 
     if (!response.ok) {
+      // If draft failed (e.g. public token → 401), try published
+      if (version === "draft" && (response.status === 401 || response.status === 403)) {
+        console.info(`[Storyblok] Draft fetch failed for "${slug}" (${response.status}) – trying published...`);
+        const pubUrl = `${API_BASE}/stories/${slug}?token=${STORYBLOK_TOKEN}&version=published&cv=${Date.now()}`;
+        const pubResponse = await fetchWithRetry(pubUrl);
+        if (!pubResponse.ok) throw new Error(`Storyblok API returned ${pubResponse.status}`);
+        const pubJson = await pubResponse.json();
+        const result = { content: pubJson.story.content as T, name: pubJson.story.name };
+        if (!isEditor) setCache(cacheKey, result);
+        return result;
+      }
       throw new Error(`Storyblok API returned ${response.status}`);
     }
 
     const json = await response.json();
     const result = { content: json.story.content as T, name: json.story.name };
 
-    setCache(cacheKey, result);
+    if (!isEditor) setCache(cacheKey, result);
     return result;
   } catch (err) {
     console.warn(`[Storyblok] Failed to fetch story "${slug}":`, err);
@@ -156,6 +169,10 @@ export async function fetchStoryblokStory<T = any>(
 // ── localStorage cache helpers ──
 
 function getCache<T>(key: string): T | null {
+  // Skip cache entirely inside Storyblok Visual Editor
+  if (typeof window !== "undefined" && window.location.search.includes("_storyblok")) {
+    return null;
+  }
   try {
     const raw = localStorage.getItem(`sb_${key}`);
     if (!raw) return null;

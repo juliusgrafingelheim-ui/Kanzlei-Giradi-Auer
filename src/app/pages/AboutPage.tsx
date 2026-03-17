@@ -119,6 +119,15 @@ export function AboutPage() {
   const { content } = useStoryblok('pages/about');
   const c = content as any;
 
+  // Helper to extract image URL from Storyblok asset field
+  // Storyblok can return: { filename: "url" }, "url", "", null, or undefined
+  const getAssetUrl = (field: any): string => {
+    if (!field) return "";
+    if (typeof field === "string") return field;
+    if (typeof field === "object" && field.filename) return field.filename;
+    return "";
+  };
+
   // Build team from Storyblok or fallback
   const teamData = [];
   for (let i = 1; i <= 5; i++) {
@@ -133,7 +142,7 @@ export function AboutPage() {
         name,
         title: c[`member_${i}_title`] || "",
         role: c[`member_${i}_role`] || "",
-        image: c[`member_${i}_image`]?.filename || "",
+        image: getAssetUrl(c[`member_${i}_image`]),
         description: c[`member_${i}_description`] || "",
         since: c[`member_${i}_since`] || "",
         specializations: specs,
@@ -179,7 +188,7 @@ export function AboutPage() {
   ];
 
   // Fallback-safe getters
-  const heroImage = c?.hero_image?.filename || imgOffice1;
+  const heroImage = getAssetUrl(c?.hero_image) || imgOffice1;
   const seoTitle = c?.seo_title || "Über uns - Erfahrene Rechtsanwälte seit 1989 | Girardi & Auer";
   const seoDesc = c?.seo_description || "Lernen Sie das Team der Kanzlei Girardi & Auer kennen.";
 

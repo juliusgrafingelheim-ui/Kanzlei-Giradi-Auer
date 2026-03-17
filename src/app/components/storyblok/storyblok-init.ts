@@ -82,8 +82,9 @@ export function isStoryblokConfigured(): boolean {
 
 /**
  * Get the content version based on environment.
- * IMPORTANT: Public tokens can only access "published" content.
- * "draft" requires a preview/private token.
+ * With a Preview token, "draft" works in the editor and dev.
+ * With a Public token, only "published" works — but the Bridge
+ * still handles real-time draft updates in the Visual Editor.
  */
 export function getContentVersion(): "draft" | "published" {
   if (isPreview) return "draft";

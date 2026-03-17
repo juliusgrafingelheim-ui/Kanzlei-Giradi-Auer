@@ -65,9 +65,13 @@ export function usePageContent(
   const [loading, setLoading] = useState(() => isStoryblokConfigured());
   const fetchedRef = useRef(false);
 
+  // Detect if inside Storyblok Visual Editor (skip caching, always re-fetch)
+  const isEditor =
+    typeof window !== "undefined" && window.location.search.includes("_storyblok");
+
   useEffect(() => {
-    // Only fetch once per pageKey
-    if (fetchedRef.current) return;
+    // Only fetch once per pageKey (unless in editor)
+    if (fetchedRef.current && !isEditor) return;
     if (!isStoryblokConfigured()) {
       setLoading(false);
       return;
@@ -95,7 +99,7 @@ export function usePageContent(
       .finally(() => {
         setLoading(false);
       });
-  }, [pageKey]);
+  }, [pageKey, isEditor]);
 
   // ── getText: language-aware text lookup ──
   const getText = useCallback(
