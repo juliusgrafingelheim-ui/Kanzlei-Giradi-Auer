@@ -1,8 +1,13 @@
 import { storyblokInit, apiPlugin, StoryblokClient } from "@storyblok/react";
 
+// Debug: Log the token (first 10 chars only for security)
+const token = import.meta.env.VITE_STORYBLOK_TOKEN || "";
+console.log('[Storyblok Init] Token available:', token ? `${token.substring(0, 10)}...` : 'NO TOKEN FOUND');
+console.log('[Storyblok Init] All env vars:', import.meta.env);
+
 // Initialize Storyblok
 const { storyblokApi } = storyblokInit({
-  accessToken: import.meta.env.VITE_STORYBLOK_TOKEN || "",
+  accessToken: token,
   use: [apiPlugin],
   apiOptions: {
     region: "eu", // or 'us' depending on your region
