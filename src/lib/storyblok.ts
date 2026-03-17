@@ -8,13 +8,6 @@ export const isStoryblokEditor =
   typeof window !== "undefined" &&
   window.location.search.includes("_storyblok");
 
-// Determine content version:
-// - "draft" requires a preview/private token
-// - "published" works with public tokens
-// - Use "draft" in dev mode OR when inside Storyblok Visual Editor
-const contentVersion: "draft" | "published" =
-  import.meta.env.DEV || isStoryblokEditor ? "draft" : "published";
-
 // Create API client directly
 const storyblokApi = token
   ? new StoryblokClient({
@@ -30,14 +23,14 @@ const storyblokApi = token
 if (!token) {
   console.info("[Storyblok] No token found. Using fallback data.");
 } else {
-  console.info(`[Storyblok] Initialized (version: ${contentVersion})`);
+  console.info(
+    `[Storyblok] Initialized (editor: ${isStoryblokEditor ? "yes" : "no"})`
+  );
 }
 
 export { storyblokApi };
 
 // ─── Storyblok Bridge for Visual Editor ──────────────────────────────────────
-// The bridge sends real-time "input" events when editors change content,
-// and "published" / "change" events when they publish or switch languages.
 
 type BridgeCallback = (payload: any) => void;
 const listeners = new Map<string, Set<BridgeCallback>>();
@@ -53,9 +46,12 @@ export function onStoryblokInput(slug: string, cb: BridgeCallback) {
 
 /** Notify all listeners that content for a story was updated */
 function notifyListeners(fullSlug: string, content: any) {
-  // Try exact match first, then partial matches
   for (const [slug, cbs] of listeners) {
-    if (fullSlug === slug || fullSlug.endsWith(slug) || slug.endsWith(fullSlug)) {
+    if (
+      fullSlug === slug ||
+      fullSlug.endsWith(slug) ||
+      slug.endsWith(fullSlug)
+    ) {
       cbs.forEach((cb) => cb(content));
     }
   }
@@ -65,7 +61,8 @@ let bridgeLoaded = false;
 
 /** Load and initialize the Storyblok Bridge script for real-time editing */
 export function initStoryblokBridge() {
-  if (bridgeLoaded || !isStoryblokEditor || typeof window === "undefined") return;
+  if (bridgeLoaded || !isStoryblokEditor || typeof window === "undefined")
+    return;
   bridgeLoaded = true;
 
   console.info("[Storyblok] Visual Editor detected – loading Bridge...");
@@ -109,9 +106,11 @@ export function initStoryblokBridge() {
       window.location.reload();
     });
 
-    // Enter edit mode event
     bridge.on("enterEditmode", (event: any) => {
-      console.info("[Storyblok Bridge] Enter edit mode for story:", event?.storyId);
+      console.info(
+        "[Storyblok Bridge] Enter edit mode for story:",
+        event?.storyId
+      );
     });
   };
 
@@ -145,7 +144,18 @@ export interface SEO {
 
 // ─── API Helpers ─────────────────────────────────────────────────────────────
 
-/** Fetch a single story */
+/**
+ * Fetch a single story.
+ *
+ * Strategy:
+ * - In the Visual Editor → try "draft" first (needs a preview token).
+ *   If that fails (e.g. public token → 401), retry with "published"
+ *   so the editor at least shows the current live content.
+ * - Outside the editor → always use "published".
+ *
+ * The Bridge handles real-time draft previews via input events,
+ * so even with a public token, editors see their changes live.
+ */
 export async function getStory<T = any>(
   slug: string,
   params?: any
@@ -157,20 +167,46 @@ export async function getStory<T = any>(
     return null;
   }
 
+  const baseParams = { cv: Date.now(), ...params };
+
+  // In the Visual Editor, try "draft" first
+  if (isStoryblokEditor) {
+    try {
+      const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
+        version: "draft",
+        ...baseParams,
+      });
+      if (data?.story) {
+        console.info(`[Storyblok] Fetched "${slug}" (draft)`);
+        return data.story;
+      }
+    } catch (draftError: any) {
+      // Draft failed (likely 401 with public token) – fall through to published
+      console.info(
+        `[Storyblok] Draft fetch failed for "${slug}" (${draftError?.status || "unknown"}) – trying published...`
+      );
+    }
+  }
+
+  // Default: fetch published version
   try {
     const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
-      version: contentVersion,
-      cv: Date.now(), // Cache buster
-      ...params,
+      version: "published",
+      ...baseParams,
     });
-
-    return data.story;
+    if (data?.story) {
+      console.info(`[Storyblok] Fetched "${slug}" (published)`);
+      return data.story;
+    }
+    return null;
   } catch (error: any) {
-    // Only log real errors, not 404s (story not created yet)
     if (error?.status === 404) {
       console.info(`[Storyblok] Story "${slug}" not found – using fallback.`);
     } else {
-      console.error(`[Storyblok] Error fetching "${slug}":`, error?.message || error);
+      console.error(
+        `[Storyblok] Error fetching "${slug}":`,
+        error?.message || error
+      );
     }
     return null;
   }
@@ -187,13 +223,16 @@ export async function getStories<T = any>(
 
   try {
     const { data } = await storyblokApi.get("cdn/stories", {
-      version: contentVersion,
+      version: "published",
       cv: Date.now(),
       ...params,
     });
     return data.stories;
   } catch (error: any) {
-    console.error("[Storyblok] Error fetching stories:", error?.message || error);
+    console.error(
+      "[Storyblok] Error fetching stories:",
+      error?.message || error
+    );
     return [];
   }
 }
@@ -209,11 +248,10 @@ export function getImageUrl(
   }
 ): string {
   if (!image) return "";
-  
+
   const filename = typeof image === "string" ? image : image.filename;
   if (!filename) return "";
 
-  // Storyblok Image Service
   const params = new URLSearchParams();
   if (options?.width) params.append("m", `${options.width}x0`);
   if (options?.quality) params.append("quality", options.quality.toString());
