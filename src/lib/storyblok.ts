@@ -36,8 +36,15 @@ export async function getStory<T = any>(
   slug: string,
   params?: any
 ): Promise<StoryblokStory<T> | null> {
+  if (!storyblokApi) {
+    console.error(
+      'Storyblok API not initialized. Check if VITE_STORYBLOK_TOKEN is set.'
+    );
+    return null;
+  }
+
   try {
-    const { data } = await storyblokApi!.get(`cdn/stories/${slug}`, {
+    const { data } = await storyblokApi.get(`cdn/stories/${slug}`, {
       version: import.meta.env.DEV ? "draft" : "published",
       cv: Date.now(), // Cache buster - forces fresh content
       ...params,
@@ -53,8 +60,13 @@ export async function getStory<T = any>(
 export async function getStories<T = any>(
   params?: any
 ): Promise<StoryblokStory<T>[]> {
+  if (!storyblokApi) {
+    console.error('Storyblok API not initialized. Check if VITE_STORYBLOK_TOKEN is set.');
+    return [];
+  }
+  
   try {
-    const { data } = await storyblokApi!.get("cdn/stories", {
+    const { data } = await storyblokApi.get("cdn/stories", {
       version: import.meta.env.DEV ? "draft" : "published",
       cv: Date.now(), // Cache buster - forces fresh content
       ...params,
